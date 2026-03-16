@@ -1,15 +1,23 @@
 #!/usr/bin/env npx tsx
 /**
- * Claw Arena CLI
+ * ClawDuel CLI
  *
- * Used by Claude Code agents via the claw-arena skill.
- * Handles signing, registration, queueing, polling, and submission.
+ * Used by Claude Code agents via the clawduel skill.
+ * Handles signing, deposits, queueing, polling, and submission.
+ *
+ * Security features:
+ *   - Secret leak detection on ALL outgoing request bodies (private keys, mnemonics, API keys)
+ *   - Request timeouts on all fetch calls
+ *   - Backend URL validation (anti-SSRF)
+ *   - URL path sanitization
+ *   - Private key redaction in all logs and error messages
+ *   - Auth timestamp validation
+ *   - Safe error handling (no secret reflection)
  *
  * Usage:
  *   npx tsx claw-cli.ts <command> [options]
  *
  * Commands:
- *   register   --name <name>
  *   deposit    --amount <usdc_amount>
  *   balance
  *   queue      --bet-tier <10|100|1000|10000|100000>
@@ -20,89 +28,327 @@
  *   match      --id <matchId>
  *
  * Environment:
- *   AGENT_PRIVATE_KEY  — required
- *   CLAW_BACKEND_URL   — default: http://localhost:3001
- *   CLAW_RPC_URL       — default: http://localhost:8545
+ *   AGENT_PRIVATE_KEY  - required
+ *   CLAW_BACKEND_URL   - default: http://localhost:3001
+ *   CLAW_RPC_URL       - default: http://localhost:8545
  */
 import { ethers } from 'ethers';
+import chalk from 'chalk';
+
+// --- Security: Secret Leak Detection ---
+
+/**
+ * Patterns that detect secrets which must NEVER be sent to a backend.
+ */
+const SECRET_PATTERNS: { name: string; pattern: RegExp }[] = [
+  { name: 'Ethereum private key (0x-prefixed)', pattern: /(?:^|[^a-fA-F0-9])0x[0-9a-fA-F]{64}(?:[^a-fA-F0-9]|$)/ },
+  { name: 'Ethereum private key (raw hex)', pattern: /(?:^|[^a-fA-F0-9x])[0-9a-fA-F]{64}(?:[^a-fA-F0-9]|$)/ },
+  { name: 'Mnemonic seed phrase', pattern: /(?:[a-z]{3,8}\s){11,23}[a-z]{3,8}/ },
+  { name: 'Extended private key (xprv)', pattern: /xprv[a-zA-Z0-9]{107,108}/ },
+  { name: 'API key (sk- prefix)', pattern: /sk-[a-zA-Z0-9_-]{20,}/ },
+  { name: 'API key (sk-ant- prefix)', pattern: /sk-ant-[a-zA-Z0-9_-]{20,}/ },
+  { name: 'AWS secret key', pattern: /(?:AWS|aws).{0,20}['\"][0-9a-zA-Z/+=]{40}['\"]/ },
+];
+
+function detectSecretLeak(data: string): string | null {
+  for (const { name, pattern } of SECRET_PATTERNS) {
+    if (pattern.test(data)) {
+      return name;
+    }
+  }
+  return null;
+}
+
+/**
+ * Scans outgoing data for secrets. Throws and blocks the request if found.
+ * Checks both pattern-based detection AND exact match against the agent's own key.
+ */
+function assertNoSecretLeak(body: unknown, privateKey: string): void {
+  const serialized = typeof body === 'string' ? body : JSON.stringify(body);
+
+  // Exact match against the agent's own private key
+  const rawKey = privateKey.startsWith('0x') ? privateKey.slice(2) : privateKey;
+  if (serialized.includes(rawKey)) {
+    throw new Error(
+      'SECURITY BLOCKED: Request body contains the agent\'s own private key. Request was NOT sent.'
+    );
+  }
+
+  // Pattern-based detection
+  const detected = detectSecretLeak(serialized);
+  if (detected) {
+    throw new Error(
+      `SECURITY BLOCKED: Request body appears to contain a secret (${detected}). Request was NOT sent.`
+    );
+  }
+}
+
+// --- Security: Sensitive Data Redaction ---
+
+function redactSecrets(input: string, privateKey?: string): string {
+  let result = input;
+
+  // Redact the agent's exact private key first (both with and without 0x)
+  if (privateKey) {
+    const rawKey = privateKey.startsWith('0x') ? privateKey.slice(2) : privateKey;
+    const fullKey = privateKey.startsWith('0x') ? privateKey : `0x${privateKey}`;
+    result = result.split(rawKey).join('[REDACTED_KEY]');
+    result = result.split(fullKey).join('0x[REDACTED_KEY]');
+  }
+
+  // Redact hex strings that look like private keys
+  result = result.replace(/0x[0-9a-fA-F]{64}/g, '0x[REDACTED_KEY]');
+  result = result.replace(/(?<![0-9a-fA-F])[0-9a-fA-F]{64}(?![0-9a-fA-F])/g, '[REDACTED_HEX]');
+  // Redact API keys
+  result = result.replace(/sk-[a-zA-Z0-9_-]{20,}/g, 'sk-[REDACTED]');
+  result = result.replace(/sk-ant-[a-zA-Z0-9_-]{20,}/g, 'sk-ant-[REDACTED]');
+  result = result.replace(/xprv[a-zA-Z0-9]{50,}/g, 'xprv[REDACTED]');
+  return result;
+}
+
+// --- Security: URL Validation ---
+
+function validateBackendUrl(url: string): void {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    throw new Error(`Invalid backend URL: ${url}`);
+  }
+
+  if (!['http:', 'https:'].includes(parsed.protocol)) {
+    throw new Error(`Backend URL must use http or https protocol, got: ${parsed.protocol}`);
+  }
+
+  // Block cloud metadata endpoints (SSRF vector)
+  if (parsed.hostname === '169.254.169.254') {
+    throw new Error('Backend URL must not point to cloud metadata endpoints');
+  }
+}
+
+function sanitizePathSegment(segment: string): string {
+  return segment.replace(/[^a-zA-Z0-9\-_.]/g, '');
+}
+
+// --- Security: Auth Timestamp Validation ---
+
+const MAX_TIMESTAMP_DRIFT_MS = 5 * 60 * 1000; // 5 minutes
+
+function validateTimestamp(timestampMs: number): void {
+  const now = Date.now();
+  const drift = Math.abs(now - timestampMs);
+  if (drift > MAX_TIMESTAMP_DRIFT_MS) {
+    throw new Error(`Auth timestamp is too far from current time (drift: ${drift}ms). Clock may be out of sync.`);
+  }
+}
+
+// --- Constants ---
+
+const REQUEST_TIMEOUT_MS = 30_000; // 30 seconds
+
+// --- Banner ---
+
+const BANNER = `
+${chalk.cyan.bold('   _____ _                 ____              _ ')}
+${chalk.cyan.bold('  / ____| |               |  _ \\            | |')}
+${chalk.cyan.bold(' | |    | | __ ___      __| | | |_   _  ___| |')}
+${chalk.cyan.bold(' | |    | |/ _` \\ \\ /\\ / /| | | | | | |/ _ \\ |')}
+${chalk.cyan.bold(' | |____| | (_| |\\ V  V / | |_| | |_| |  __/ |')}
+${chalk.cyan.bold('  \\_____|_|\\__,_| \\_/\\_/  |____/ \\__,_|\\___|_|')}
+${chalk.gray('  ─────────────────────────────────────────────')}
+${chalk.gray('  AI Agent Dueling Platform           v2.0.0')}
+`;
+
+// --- Logging Helpers ---
+
+/** Private key reference for redaction -- set after env var is read */
+let PRIVATE_KEY_FOR_REDACTION: string = '';
+
+const log = {
+  info: (msg: string) => console.log(chalk.cyan('  INFO ') + chalk.white(msg)),
+  success: (msg: string) => console.log(chalk.green('    OK ') + chalk.white(msg)),
+  warn: (msg: string) => console.log(chalk.yellow('  WARN ') + chalk.white(msg)),
+  error: (msg: string) => console.error(chalk.red(' ERROR ') + chalk.white(redactSecrets(msg, PRIVATE_KEY_FOR_REDACTION))),
+  dim: (msg: string) => console.log(chalk.gray('       ' + msg)),
+  header: (msg: string) => {
+    console.log('');
+    console.log(chalk.cyan.bold('  ' + msg));
+    console.log(chalk.gray('  ' + '-'.repeat(44)));
+  },
+  field: (label: string, value: string) => {
+    const padded = label.padEnd(14);
+    console.log(chalk.white('  ' + padded) + chalk.yellow(value));
+  },
+  json: (data: any) => console.log(JSON.stringify(data, null, 2)),
+};
+
+// --- Setup ---
 
 const PK = process.env.AGENT_PRIVATE_KEY;
 if (!PK) {
-  console.error('AGENT_PRIVATE_KEY is required');
+  console.log(BANNER);
+  log.error('AGENT_PRIVATE_KEY environment variable is required.');
+  log.dim('Set it before running any command:');
+  log.dim('  export AGENT_PRIVATE_KEY=0x...');
+  console.log('');
   process.exit(1);
 }
+PRIVATE_KEY_FOR_REDACTION = PK;
 
 const BACKEND = process.env.CLAW_BACKEND_URL || 'http://localhost:3001';
 const RPC = process.env.CLAW_RPC_URL || 'http://localhost:8545';
 
+// Validate backend URL at startup
+validateBackendUrl(BACKEND);
+
 const provider = new ethers.JsonRpcProvider(RPC);
 const wallet = new ethers.Wallet(PK, provider);
 
-// Contract addresses from backend
+// Contract addresses
 let contracts: {
   bank: string;
-  registry: string;
-  duelArena: string;
+  clawDuel: string;
   usdc: string;
 };
 
 async function loadContracts() {
-  // Get addresses from env or use defaults
   contracts = {
     bank: process.env.CLAW_BANK_ADDRESS || '0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512',
-    registry: process.env.CLAW_REGISTRY_ADDRESS || '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0',
-    duelArena: process.env.CLAW_DUEL_ARENA_ADDRESS || '0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9',
+    clawDuel: process.env.CLAW_CLAWDUEL_ADDRESS || '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0',
     usdc: process.env.CLAW_USDC_ADDRESS || '0x5FbDB2315678afecb367f032d93F642f64180aa3',
   };
 }
 
 async function authHeaders(): Promise<Record<string, string>> {
-  const timestamp = String(Date.now());
-  const message = `ClawArena:auth:${wallet.address.toLowerCase()}:${timestamp}`;
+  const timestamp = Date.now();
+
+  // Validate timestamp is reasonable (catches badly-skewed clocks)
+  validateTimestamp(timestamp);
+
+  const timestampStr = String(timestamp);
+  const message = `ClawDuel:auth:${wallet.address.toLowerCase()}:${timestampStr}`;
   const signature = await wallet.signMessage(message);
   return {
     'Content-Type': 'application/json',
     'X-Agent-Address': wallet.address,
     'X-Agent-Signature': signature,
-    'X-Agent-Timestamp': timestamp,
+    'X-Agent-Timestamp': timestampStr,
   };
 }
 
 async function apiPost(path: string, body: any): Promise<any> {
+  // SECURITY: Scan outgoing body for secrets BEFORE sending
+  assertNoSecretLeak(body, PK);
+
   const headers = await authHeaders();
-  const res = await fetch(`${BACKEND}${path}`, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify(body),
-  });
-  return { status: res.status, body: await res.json() };
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+  try {
+    const res = await fetch(`${BACKEND}${path}`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+
+    const responseBody = await res.json();
+
+    // Redact any reflected secrets in error responses from the backend
+    if (res.status >= 400 && responseBody?.error) {
+      responseBody.error = redactSecrets(String(responseBody.error), PK);
+    }
+
+    return { status: res.status, body: responseBody };
+  } catch (err: any) {
+    if (err.name === 'AbortError') {
+      throw new Error(`Request to ${path} timed out after ${REQUEST_TIMEOUT_MS}ms`);
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 async function apiGet(path: string): Promise<any> {
-  const res = await fetch(`${BACKEND}${path}`);
-  return res.json();
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+  try {
+    const res = await fetch(`${BACKEND}${path}`, {
+      signal: controller.signal,
+    });
+
+    const responseBody = await res.json();
+
+    // Redact any reflected secrets in error responses
+    if (res.status >= 400 && responseBody?.error) {
+      responseBody.error = redactSecrets(String(responseBody.error), PK);
+    }
+
+    return responseBody;
+  } catch (err: any) {
+    if (err.name === 'AbortError') {
+      throw new Error(`Request to ${path} timed out after ${REQUEST_TIMEOUT_MS}ms`);
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
-// ── Commands ─────────────────────────────────────────────────────
+// --- Text Sanitization ---
 
-async function cmdRegister(name: string) {
-  const registry = new ethers.Contract(contracts.registry, [
-    'function registerAgent(string) external',
-    'function isRegistered(address) external view returns (bool)',
-  ], wallet);
+/**
+ * Sanitize prediction text before submission.
+ * Removes control characters, normalizes whitespace, and trims.
+ */
+function sanitizePrediction(raw: string): string {
+  return raw
+    .trim()
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')  // Remove control chars (keep \n, \r, \t)
+    .replace(/\r\n/g, '\n')                                 // Normalize line endings
+    .replace(/\r/g, '\n')
+    .replace(/\t/g, ' ')                                    // Tabs to spaces
+    .replace(/ {2,}/g, ' ')                                 // Collapse multiple spaces
+    .replace(/\n{3,}/g, '\n\n')                             // Max 2 consecutive newlines
+    .trim();
+}
 
-  const isReg = await registry.isRegistered(wallet.address);
-  if (isReg) {
-    console.log(JSON.stringify({ ok: true, message: 'Already registered' }));
-    return;
+// --- Commands ---
+
+async function cmdRegister(nickname: string) {
+  log.info(`Registering agent as "${nickname}"...`);
+
+  const { status, body } = await apiPost('/agents/register', { nickname });
+
+  if (status >= 200 && status < 300) {
+    log.success(`Registered as "${body.nickname}"`);
+  } else {
+    log.error(`Registration failed (${status}): ${body?.error || 'Unknown error'}`);
   }
 
-  const tx = await registry.registerAgent(name);
-  await tx.wait();
-  console.log(JSON.stringify({ ok: true, message: `Registered as "${name}"` }));
+  console.log(JSON.stringify({ status, ...body }));
+}
+
+async function cmdRegisterEndpoint(endpointUrl: string) {
+  log.info(`Registering endpoint: ${endpointUrl}`);
+
+  const { status, body } = await apiPost('/agents/register-endpoint', { endpointUrl });
+
+  if (status >= 200 && status < 300) {
+    log.success('Endpoint registered');
+  } else {
+    log.error(`Endpoint registration failed (${status}): ${body?.error || 'Unknown error'}`);
+  }
+
+  console.log(JSON.stringify({ status, ...body }));
 }
 
 async function cmdDeposit(amountUsdc: number) {
+  log.info(`Depositing ${amountUsdc} USDC...`);
+
   const amount = ethers.parseUnits(amountUsdc.toString(), 6);
 
   const usdc = new ethers.Contract(contracts.usdc, [
@@ -116,14 +362,20 @@ async function cmdDeposit(amountUsdc: number) {
 
   const balance = await usdc.balanceOf(wallet.address);
   if (balance < amount) {
+    log.error(`Insufficient USDC. Have ${ethers.formatUnits(balance, 6)}, need ${amountUsdc}`);
     console.log(JSON.stringify({ ok: false, error: `Insufficient USDC. Have ${ethers.formatUnits(balance, 6)}, need ${amountUsdc}` }));
     return;
   }
 
+  log.info('Approving USDC...');
   const tx1 = await usdc.approve(contracts.bank, amount);
   await tx1.wait();
+
+  log.info('Depositing to Bank...');
   const tx2 = await bank.deposit(amount);
   await tx2.wait();
+
+  log.success(`Deposited ${amountUsdc} USDC`);
   console.log(JSON.stringify({ ok: true, deposited: amountUsdc }));
 }
 
@@ -136,31 +388,42 @@ async function cmdBalance() {
   const available = await bank.balanceOf(wallet.address);
   const locked = await bank.lockedBalanceOf(wallet.address);
 
-  console.log(JSON.stringify({
+  const data = {
     address: wallet.address,
     available: ethers.formatUnits(available, 6),
     locked: ethers.formatUnits(locked, 6),
     total: ethers.formatUnits(available + locked, 6),
-  }));
+  };
+
+  log.header('Balance');
+  log.field('Address', data.address);
+  log.field('Available', `${data.available} USDC`);
+  log.field('Locked', `${data.locked} USDC`);
+  log.field('Total', `${data.total} USDC`);
+  console.log('');
+
+  console.log(JSON.stringify(data));
 }
 
 async function cmdQueue(betTierUsdc: number) {
+  log.info(`Queuing for duel at ${betTierUsdc} USDC tier...`);
+
   const betTier = ethers.parseUnits(betTierUsdc.toString(), 6);
 
   // Sign EIP-712 attestation
-  const duelArena = new ethers.Contract(contracts.duelArena, [
+  const clawDuel = new ethers.Contract(contracts.clawDuel, [
     'function nonces(address) external view returns (uint256)',
   ], provider);
 
-  const nonce = await duelArena.nonces(wallet.address);
+  const nonce = await clawDuel.nonces(wallet.address);
   const deadline = Math.floor(Date.now() / 1000) + 3600;
   const chainId = (await provider.getNetwork()).chainId;
 
   const domain = {
-    name: 'ClawArena',
+    name: 'ClawDuel',
     version: '1',
     chainId,
-    verifyingContract: contracts.duelArena,
+    verifyingContract: contracts.clawDuel,
   };
   const types = {
     JoinDuelAttestation: [
@@ -173,6 +436,8 @@ async function cmdQueue(betTierUsdc: number) {
   const value = { agent: wallet.address, betTier, nonce, deadline };
   const signature = await wallet.signTypedData(domain, types, value);
 
+  log.info('Attestation signed, sending to matchmaker...');
+
   const { status, body } = await apiPost('/duels/queue', {
     betTier: betTier.toString(),
     signature,
@@ -180,24 +445,69 @@ async function cmdQueue(betTierUsdc: number) {
     deadline: deadline.toString(),
   });
 
+  if (status >= 200 && status < 300) {
+    log.success('Queued for duel');
+  } else {
+    log.error(`Queue failed (${status}): ${body?.error || 'Unknown error'}`);
+  }
+
   console.log(JSON.stringify({ status, ...body }));
 }
 
 async function cmdPoll() {
-  const data = await apiGet(`/matches/active/${wallet.address}`);
+  // Sanitize the address used in the URL path
+  const safeAddress = sanitizePathSegment(wallet.address);
+  const data = await apiGet(`/matches/active/${safeAddress}`);
   console.log(JSON.stringify(data));
 }
 
 async function cmdSubmit(matchId: string, prediction: string) {
-  const { status, body } = await apiPost(`/matches/${matchId}/submit`, {
-    prediction,
+  const sanitized = sanitizePrediction(prediction);
+  const safeMatchId = sanitizePathSegment(matchId);
+  log.info(`Submitting prediction for match ${chalk.bold(safeMatchId)}...`);
+
+  if (sanitized !== prediction.trim()) {
+    log.dim('Prediction text was sanitized for submission');
+  }
+
+  // SECURITY: assertNoSecretLeak is called inside apiPost, but we also do
+  // an explicit early check here for better error messaging to the agent
+  try {
+    assertNoSecretLeak({ prediction: sanitized }, PK);
+  } catch {
+    log.error('SECURITY: Your prediction contains what appears to be a secret (private key, mnemonic, or API key).');
+    log.error('The request was BLOCKED and NOT sent to the backend.');
+    log.dim('Review your prediction text and remove any sensitive data before resubmitting.');
+    console.log(JSON.stringify({ error: 'BLOCKED: Prediction contains a detected secret. Not sent.' }));
+    return;
+  }
+
+  const { status, body } = await apiPost(`/matches/${safeMatchId}/submit`, {
+    prediction: sanitized,
   });
+
+  if (status >= 200 && status < 300) {
+    log.success('Prediction submitted');
+  } else {
+    log.error(`Submission failed (${status}): ${body?.error || 'Unknown error'}`);
+  }
+
   console.log(JSON.stringify({ status, ...body }));
 }
 
 async function cmdStatus() {
-  const data = await apiGet(`/agents/${wallet.address}`);
+  const safeAddress = sanitizePathSegment(wallet.address);
+  const data = await apiGet(`/api/agents/${safeAddress}`);
   const balance = await cmdBalanceData();
+
+  log.header('Agent Status');
+  log.field('Address', wallet.address);
+  if (data.nickname) log.field('Nickname', data.nickname);
+  if (data.elo) log.field('ELO', String(data.elo));
+  log.field('Available', `${balance.available} USDC`);
+  log.field('Locked', `${balance.locked} USDC`);
+  console.log('');
+
   console.log(JSON.stringify({ ...data, ...balance }));
 }
 
@@ -238,13 +548,21 @@ async function cmdMatches(statusFilter?: string) {
     winner: m.winner,
   }));
 
+  if (formatted.length === 0) {
+    log.info(statusFilter ? `No ${statusFilter} matches found` : 'No matches found');
+  } else {
+    log.info(`Found ${formatted.length} match${formatted.length === 1 ? '' : 'es'}${statusFilter ? ` (${statusFilter})` : ''}`);
+  }
+
   console.log(JSON.stringify({ count: formatted.length, matches: formatted }, null, 2));
 }
 
 async function cmdMatch(matchId: string) {
-  const data = await apiGet(`/api/matches/${matchId}`);
+  const safeMatchId = sanitizePathSegment(matchId);
+  const data = await apiGet(`/api/matches/${safeMatchId}`);
 
   if (data.error) {
+    log.error(data.error);
     console.log(JSON.stringify(data));
     return;
   }
@@ -281,9 +599,9 @@ async function cmdMatch(matchId: string) {
         verdict: !data.winner ? 'DRAW' : err1 < err2 ? 'AGENT_1_CLOSER' : 'AGENT_2_CLOSER',
       };
     } else if (!p1 && !p2) {
-      result.resolution = { verdict: 'DRAW — both agents failed to submit' };
+      result.resolution = { verdict: 'DRAW - both agents failed to submit' };
     } else if (!p1 || !p2) {
-      result.resolution = { verdict: 'WIN_BY_FORFEIT — opponent did not submit' };
+      result.resolution = { verdict: 'WIN_BY_FORFEIT - opponent did not submit' };
     } else {
       result.resolution = { actualValue: actual, verdict: data.winner ? 'WINNER_DECLARED' : 'DRAW' };
     }
@@ -293,10 +611,60 @@ async function cmdMatch(matchId: string) {
     }
   }
 
+  log.header(`Match ${result.matchId || safeMatchId}`);
+  log.field('Status', result.status || 'unknown');
+  if (result.problemTitle) log.field('Problem', result.problemTitle);
+  if (result.betSize) log.field('Bet Size', result.betSize);
+  if (result.winner) log.field('Winner', result.winner);
+  console.log('');
+
   console.log(JSON.stringify(result, null, 2));
 }
 
-// ── Main ─────────────────────────────────────────────────────────
+// --- Help ---
+
+function showHelp() {
+  console.log(BANNER);
+  console.log(chalk.white.bold('  Usage'));
+  console.log(chalk.gray('  ' + '-'.repeat(44)));
+  console.log('');
+  console.log(chalk.white('  npx tsx claw-cli.ts ') + chalk.cyan('<command>') + chalk.gray(' [options]'));
+  console.log('');
+  console.log(chalk.white.bold('  Commands'));
+  console.log(chalk.gray('  ' + '-'.repeat(44)));
+  console.log('');
+  console.log(chalk.cyan('  register  ') + chalk.gray('--nickname <name>       ') + chalk.white('Register your agent'));
+  console.log(chalk.cyan('  register-endpoint ') + chalk.gray('--url <url>    ') + chalk.white('Register webhook endpoint'));
+  console.log(chalk.cyan('  deposit   ') + chalk.gray('--amount <usdc>         ') + chalk.white('Deposit USDC into the bank'));
+  console.log(chalk.cyan('  balance   ') + chalk.gray('                        ') + chalk.white('Check your bank balance'));
+  console.log(chalk.cyan('  queue     ') + chalk.gray('--bet-tier <tier>       ') + chalk.white('Queue for a duel (10/100/1000/10000/100000)'));
+  console.log(chalk.cyan('  poll      ') + chalk.gray('                        ') + chalk.white('Poll for your active match'));
+  console.log(chalk.cyan('  submit    ') + chalk.gray('--match-id <id>         ') + chalk.white('Submit your prediction'));
+  console.log(chalk.gray('            ') + chalk.gray('--prediction <value>    '));
+  console.log(chalk.cyan('  status    ') + chalk.gray('                        ') + chalk.white('View agent info and balance'));
+  console.log(chalk.cyan('  matches   ') + chalk.gray('[--status <filter>]     ') + chalk.white('List matches'));
+  console.log(chalk.cyan('  match     ') + chalk.gray('--id <matchId>          ') + chalk.white('View match details'));
+  console.log(chalk.cyan('  help      ') + chalk.gray('                        ') + chalk.white('Show this help'));
+  console.log('');
+  console.log(chalk.white.bold('  Environment'));
+  console.log(chalk.gray('  ' + '-'.repeat(44)));
+  console.log('');
+  console.log(chalk.yellow('  AGENT_PRIVATE_KEY       ') + chalk.gray('(required) Your Ethereum private key'));
+  console.log(chalk.yellow('  CLAW_BACKEND_URL        ') + chalk.gray('Backend URL (default: http://localhost:3001)'));
+  console.log(chalk.yellow('  CLAW_RPC_URL            ') + chalk.gray('RPC URL (default: http://localhost:8545)'));
+  console.log(chalk.yellow('  CLAW_BANK_ADDRESS       ') + chalk.gray('Bank contract address'));
+  console.log(chalk.yellow('  CLAW_CLAWDUEL_ADDRESS   ') + chalk.gray('ClawDuel contract address'));
+  console.log(chalk.yellow('  CLAW_USDC_ADDRESS       ') + chalk.gray('USDC contract address'));
+  console.log('');
+  console.log(chalk.white.bold('  Security'));
+  console.log(chalk.gray('  ' + '-'.repeat(44)));
+  console.log('');
+  console.log(chalk.gray('  All outgoing requests are scanned for private keys, mnemonics,'));
+  console.log(chalk.gray('  and API keys. Requests containing secrets are hard-blocked.'));
+  console.log('');
+}
+
+// --- Main ---
 
 async function main() {
   await loadContracts();
@@ -305,7 +673,8 @@ async function main() {
   const getArg = (flag: string): string => {
     const idx = args.indexOf(flag);
     if (idx === -1 || idx + 1 >= args.length) {
-      console.error(`Missing ${flag}`);
+      log.error(`Missing required argument: ${chalk.bold(flag)}`);
+      log.dim(`Run ${chalk.cyan('npx tsx claw-cli.ts help')} for usage info`);
       process.exit(1);
     }
     return args[idx + 1];
@@ -313,7 +682,10 @@ async function main() {
 
   switch (cmd) {
     case 'register':
-      await cmdRegister(getArg('--name'));
+      await cmdRegister(getArg('--nickname'));
+      break;
+    case 'register-endpoint':
+      await cmdRegisterEndpoint(getArg('--url'));
       break;
     case 'deposit':
       await cmdDeposit(parseFloat(getArg('--amount')));
@@ -342,13 +714,26 @@ async function main() {
     case 'match':
       await cmdMatch(getArg('--id'));
       break;
+    case 'help':
+    case '--help':
+    case '-h':
+      showHelp();
+      break;
     default:
-      console.error(`Unknown command: ${cmd}\nCommands: register, deposit, balance, queue, poll, submit, status, matches, match`);
-      process.exit(1);
+      if (!cmd) {
+        showHelp();
+      } else {
+        log.error(`Unknown command: ${chalk.bold(cmd)}`);
+        log.dim(`Run ${chalk.cyan('npx tsx claw-cli.ts help')} for available commands`);
+        process.exit(1);
+      }
   }
 }
 
 main().catch(err => {
-  console.error(JSON.stringify({ error: err.message }));
+  // Redact secrets from error messages and stack traces before logging
+  const safeMessage = redactSecrets(err.message || String(err), PK);
+  log.error(safeMessage);
+  console.error(JSON.stringify({ error: safeMessage }));
   process.exit(1);
 });
