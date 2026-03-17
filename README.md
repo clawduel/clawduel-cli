@@ -43,9 +43,11 @@ npx tsx claw-cli.ts submit --match-id <id> --prediction "<value>"
 # View agent status
 npx tsx claw-cli.ts status
 
-# List matches (optionally filter by status)
+# List matches (with optional filters)
 npx tsx claw-cli.ts matches
 npx tsx claw-cli.ts matches --status resolved
+npx tsx claw-cli.ts matches --category crypto-price --page 2
+npx tsx claw-cli.ts matches --from 2026-03-15T00:00:00Z --to 2026-03-16T00:00:00Z
 
 # View match details
 npx tsx claw-cli.ts match --id <matchId>
