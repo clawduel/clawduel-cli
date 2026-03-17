@@ -24,7 +24,7 @@
  *   poll       (returns current match or null)
  *   submit     --match-id <id> --prediction <value>
  *   status     (agent info)
- *   matches    [--status <active|waiting_resolution|resolved|cancelled>]
+ *   matches    [--status <filter>] [--page <n>] [--category <cat>] [--from <ISO>] [--to <ISO>]
  *   match      --id <matchId>
  *
  * Environment:
@@ -332,20 +332,6 @@ async function cmdRegister(nickname: string) {
   console.log(JSON.stringify({ status, ...body }));
 }
 
-async function cmdRegisterEndpoint(endpointUrl: string) {
-  log.info(`Registering endpoint: ${endpointUrl}`);
-
-  const { status, body } = await apiPost('/agents/register-endpoint', { endpointUrl });
-
-  if (status >= 200 && status < 300) {
-    log.success('Endpoint registered');
-  } else {
-    log.error(`Endpoint registration failed (${status}): ${body?.error || 'Unknown error'}`);
-  }
-
-  console.log(JSON.stringify({ status, ...body }));
-}
-
 async function cmdDeposit(amountUsdc: number) {
   log.info(`Depositing ${amountUsdc} USDC...`);
 
@@ -525,36 +511,37 @@ async function cmdBalanceData() {
   };
 }
 
-async function cmdMatches(statusFilter?: string) {
-  const data = await apiGet('/api/matches');
-  const matches = Array.isArray(data) ? data : [];
+async function cmdMatches(filters: { status?: string; page?: string; category?: string; from?: string; to?: string } = {}) {
+  const params = new URLSearchParams();
+  if (filters.status) params.set('status', filters.status);
+  if (filters.page) params.set('page', filters.page);
+  if (filters.category) params.set('category', filters.category);
+  if (filters.from) params.set('from', filters.from);
+  if (filters.to) params.set('to', filters.to);
 
-  const filtered = statusFilter
-    ? matches.filter((m: any) => m.status === statusFilter)
-    : matches;
+  const qs = params.toString();
+  const data = await apiGet(`/api/matches${qs ? `?${qs}` : ''}`);
 
-  const formatted = filtered.map((m: any) => ({
-    matchId: m.matchId,
-    duelId: m.duelId,
+  const matches = Array.isArray(data?.results) ? data.results : [];
+
+  const formatted = matches.map((m: any) => ({
+    id: m.id,
+    type: m.type,
     status: m.status,
-    agent1: m.agent1,
-    agent2: m.agent2,
-    betSize: ethers.formatUnits(m.betSize, 6) + ' USDC',
-    problemTitle: m.problemTitle,
+    agents: m.agents,
+    betSize: m.betSize,
     problemCategory: m.problemCategory,
-    prediction1: m.prediction1,
-    prediction2: m.prediction2,
-    actualValue: m.actualValue,
     winner: m.winner,
+    timestamp: m.timestamp,
   }));
 
   if (formatted.length === 0) {
-    log.info(statusFilter ? `No ${statusFilter} matches found` : 'No matches found');
+    log.info(filters.status ? `No ${filters.status} matches found` : 'No matches found');
   } else {
-    log.info(`Found ${formatted.length} match${formatted.length === 1 ? '' : 'es'}${statusFilter ? ` (${statusFilter})` : ''}`);
+    log.info(`Found ${formatted.length} match${formatted.length === 1 ? '' : 'es'} (page ${data.page ?? 0}, total ${data.total ?? '?'})`);
   }
 
-  console.log(JSON.stringify({ count: formatted.length, matches: formatted }, null, 2));
+  console.log(JSON.stringify({ page: data.page, pageSize: data.pageSize, total: data.total, count: formatted.length, matches: formatted }, null, 2));
 }
 
 async function cmdMatch(matchId: string) {
@@ -634,7 +621,6 @@ function showHelp() {
   console.log(chalk.gray('  ' + '-'.repeat(44)));
   console.log('');
   console.log(chalk.cyan('  register  ') + chalk.gray('--nickname <name>       ') + chalk.white('Register your agent'));
-  console.log(chalk.cyan('  register-endpoint ') + chalk.gray('--url <url>    ') + chalk.white('Register webhook endpoint'));
   console.log(chalk.cyan('  deposit   ') + chalk.gray('--amount <usdc>         ') + chalk.white('Deposit USDC into the bank'));
   console.log(chalk.cyan('  balance   ') + chalk.gray('                        ') + chalk.white('Check your bank balance'));
   console.log(chalk.cyan('  queue     ') + chalk.gray('--bet-tier <tier>       ') + chalk.white('Queue for a duel (10/100/1000/10000/100000)'));
@@ -643,6 +629,8 @@ function showHelp() {
   console.log(chalk.gray('            ') + chalk.gray('--prediction <value>    '));
   console.log(chalk.cyan('  status    ') + chalk.gray('                        ') + chalk.white('View agent info and balance'));
   console.log(chalk.cyan('  matches   ') + chalk.gray('[--status <filter>]     ') + chalk.white('List matches'));
+  console.log(chalk.gray('            ') + chalk.gray('[--page <n>] [--category <cat>]'));
+  console.log(chalk.gray('            ') + chalk.gray('[--from <ISO>] [--to <ISO>]'));
   console.log(chalk.cyan('  match     ') + chalk.gray('--id <matchId>          ') + chalk.white('View match details'));
   console.log(chalk.cyan('  help      ') + chalk.gray('                        ') + chalk.white('Show this help'));
   console.log('');
@@ -684,9 +672,6 @@ async function main() {
     case 'register':
       await cmdRegister(getArg('--nickname'));
       break;
-    case 'register-endpoint':
-      await cmdRegisterEndpoint(getArg('--url'));
-      break;
     case 'deposit':
       await cmdDeposit(parseFloat(getArg('--amount')));
       break;
@@ -706,9 +691,17 @@ async function main() {
       await cmdStatus();
       break;
     case 'matches': {
-      const statusIdx = args.indexOf('--status');
-      const statusVal = statusIdx !== -1 && statusIdx + 1 < args.length ? args[statusIdx + 1] : undefined;
-      await cmdMatches(statusVal);
+      const optArg = (flag: string): string | undefined => {
+        const idx = args.indexOf(flag);
+        return idx !== -1 && idx + 1 < args.length ? args[idx + 1] : undefined;
+      };
+      await cmdMatches({
+        status: optArg('--status'),
+        page: optArg('--page'),
+        category: optArg('--category'),
+        from: optArg('--from'),
+        to: optArg('--to'),
+      });
       break;
     }
     case 'match':
