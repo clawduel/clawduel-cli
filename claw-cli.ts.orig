@@ -6,7 +6,6 @@
  * Handles signing, deposits, queueing, polling, and submission.
  *
  * Security features:
- *   - Encrypted keyfile storage (~/.clawduel/keyfile.json)
  *   - Secret leak detection on ALL outgoing request bodies (private keys, mnemonics, API keys)
  *   - Request timeouts on all fetch calls
  *   - Backend URL validation (anti-SSRF)
@@ -19,11 +18,9 @@
  *   npx tsx claw-cli.ts <command> [options]
  *
  * Commands:
- *   init       Set up encrypted keyfile (run first)
  *   deposit    --amount <usdc_amount>
  *   balance
  *   queue      --bet-tier <10|100|1000|10000|100000>
- *   dequeue    --bet-tier <10|100|1000|10000|100000>
  *   poll       (returns current match or null)
  *   submit     --match-id <id> --prediction <value>
  *   status     (agent info)
@@ -31,16 +28,12 @@
  *   match      --id <matchId>
  *
  * Environment:
- *   AGENT_PRIVATE_KEY  - optional fallback (keyfile preferred)
+ *   AGENT_PRIVATE_KEY  - required
  *   CLAW_BACKEND_URL   - default: http://localhost:3001
  *   CLAW_RPC_URL       - default: http://localhost:8545
  */
 import { ethers } from 'ethers';
 import chalk from 'chalk';
-import * as fs from 'fs';
-import * as path from 'path';
-import * as os from 'os';
-import * as readline from 'readline';
 
 // --- Security: Secret Leak Detection ---
 
@@ -189,104 +182,27 @@ const log = {
   json: (data: any) => console.log(JSON.stringify(data, null, 2)),
 };
 
-// --- Keyfile Helpers ---
+// --- Setup ---
 
-const KEYFILE_DIR = path.join(os.homedir(), '.clawduel');
-const KEYFILE_PATH = process.env.CLAW_KEYFILE || path.join(KEYFILE_DIR, 'keyfile.json');
-
-function promptLine(question: string): Promise<string> {
-  const rl = readline.createInterface({ input: process.stdin, output: process.stderr });
-  return new Promise((resolve) => {
-    rl.question(question, (answer) => { rl.close(); resolve(answer); });
-  });
-}
-
-async function cmdInit() {
+const PK = process.env.AGENT_PRIVATE_KEY;
+if (!PK) {
   console.log(BANNER);
-  log.info('Setting up encrypted keyfile...');
-  log.dim(`Keyfile will be saved to ${KEYFILE_PATH}`);
-  console.log('');
-
-  const privateKey = process.env.AGENT_PRIVATE_KEY || await promptLine('Paste your private key: ');
-  if (!privateKey.trim()) {
-    log.error('No private key provided. Aborting.');
-    process.exit(1);
-  }
-
-  // Validate the key by creating a wallet
-  let tempWallet: ethers.Wallet;
-  try {
-    tempWallet = new ethers.Wallet(privateKey.trim());
-  } catch {
-    log.error('Invalid private key format. Aborting.');
-    process.exit(1);
-  }
-
-  const password = await promptLine('Enter encryption password (will not be hidden): ');
-  if (!password) {
-    log.error('No password provided. Aborting.');
-    process.exit(1);
-  }
-
-  log.info('Encrypting keyfile (this may take a moment)...');
-  const encrypted = await tempWallet.encrypt(password);
-
-  fs.mkdirSync(KEYFILE_DIR, { recursive: true });
-  fs.writeFileSync(KEYFILE_PATH, encrypted, { mode: 0o600 });
-
-  log.success('Keyfile saved to ' + KEYFILE_PATH);
-  log.field('Address', tempWallet.address);
-  console.log('');
-  console.log(JSON.stringify({ ok: true, address: tempWallet.address, keyfile: KEYFILE_PATH }));
-}
-
-async function loadWallet(): Promise<{ wallet: ethers.Wallet; privateKey: string }> {
-  const BACKEND = process.env.CLAW_BACKEND_URL || 'http://localhost:3001';
-  const RPC = process.env.CLAW_RPC_URL || 'http://localhost:8545';
-  validateBackendUrl(BACKEND);
-  const provider = new ethers.JsonRpcProvider(RPC);
-
-  // Try keyfile first
-  if (fs.existsSync(KEYFILE_PATH)) {
-    log.dim('Found keyfile at ' + KEYFILE_PATH);
-    const password = process.env.CLAW_KEY_PASSWORD || await promptLine('Enter keyfile password: ');
-    try {
-      log.info('Decrypting keyfile...');
-      const encryptedJson = fs.readFileSync(KEYFILE_PATH, 'utf-8');
-      const decryptedWallet = await ethers.Wallet.fromEncryptedJson(encryptedJson, password);
-      const connectedWallet = decryptedWallet.connect(provider);
-      return { wallet: connectedWallet as ethers.Wallet, privateKey: decryptedWallet.privateKey };
-    } catch {
-      log.error('Failed to decrypt keyfile. Wrong password?');
-      process.exit(1);
-    }
-  }
-
-  // Fallback to env var
-  const pk = process.env.AGENT_PRIVATE_KEY;
-  if (pk) {
-    log.dim('Using AGENT_PRIVATE_KEY from environment (keyfile preferred)');
-    const w = new ethers.Wallet(pk, provider);
-    return { wallet: w, privateKey: pk };
-  }
-
-  // Neither available
-  console.log(BANNER);
-  log.error('No keyfile or AGENT_PRIVATE_KEY found.');
-  log.dim('Run `npx tsx claw-cli.ts init` to set up your encrypted keyfile.');
-  log.dim('Or set AGENT_PRIVATE_KEY as a fallback.');
+  log.error('AGENT_PRIVATE_KEY environment variable is required.');
+  log.dim('Set it before running any command:');
+  log.dim('  export AGENT_PRIVATE_KEY=0x...');
   console.log('');
   process.exit(1);
 }
-
-// --- Setup (lazy, initialized in main) ---
+PRIVATE_KEY_FOR_REDACTION = PK;
 
 const BACKEND = process.env.CLAW_BACKEND_URL || 'http://localhost:3001';
 const RPC = process.env.CLAW_RPC_URL || 'http://localhost:8545';
 
-let PK: string = '';
-let provider: ethers.JsonRpcProvider;
-let wallet: ethers.Wallet;
+// Validate backend URL at startup
+validateBackendUrl(BACKEND);
+
+const provider = new ethers.JsonRpcProvider(RPC);
+const wallet = new ethers.Wallet(PK, provider);
 
 // Contract addresses
 let contracts: {
@@ -320,7 +236,7 @@ async function authHeaders(): Promise<Record<string, string>> {
   };
 }
 
-async function apiPost(path: string, body: any, method: string = 'POST'): Promise<any> {
+async function apiPost(path: string, body: any): Promise<any> {
   // SECURITY: Scan outgoing body for secrets BEFORE sending
   assertNoSecretLeak(body, PK);
 
@@ -331,7 +247,7 @@ async function apiPost(path: string, body: any, method: string = 'POST'): Promis
 
   try {
     const res = await fetch(`${BACKEND}${path}`, {
-      method,
+      method: 'POST',
       headers,
       body: JSON.stringify(body),
       signal: controller.signal,
@@ -525,47 +441,10 @@ async function cmdQueue(betTierUsdc: number) {
   console.log(JSON.stringify({ status, ...body }));
 }
 
-async function cmdDequeue(betTierUsdc: number) {
-  log.info(`Cancelling queue for ${betTierUsdc} USDC tier...`);
-
-  const betTier = ethers.parseUnits(betTierUsdc.toString(), 6);
-
-  const { status, body } = await apiPost('/duels/queue', {
-    betTier: betTier.toString(),
-  }, 'DELETE');
-
-  if (status >= 200 && status < 300) {
-    log.success('Removed from queue');
-  } else {
-    log.error(`Dequeue failed (${status}): ${body?.error || 'Unknown error'}`);
-  }
-
-  console.log(JSON.stringify({ status, ...body }));
-}
-
 async function cmdPoll() {
   // Sanitize the address used in the URL path
   const safeAddress = sanitizePathSegment(wallet.address);
   const data = await apiGet(`/matches/active/${safeAddress}`);
-
-  // Handle ready acknowledgement flow
-  if (data?.match && data.match.status === 'waiting_ready' && data.match.readyUrl && data.match.problem === null) {
-    log.info('Match found, sending ready signal...');
-    const url = new URL(data.match.readyUrl);
-    const { status, body } = await apiPost(url.pathname, {});
-    if (status >= 200 && status < 300) {
-      log.success('Ready signal sent');
-      log.info('Waiting for opponent...');
-    } else {
-      log.warn(`Ready acknowledgement failed (${status}): ${body?.error || 'Unknown error'}`);
-    }
-
-    // Re-poll to get updated state
-    const updatedData = await apiGet(`/matches/active/${safeAddress}`);
-    console.log(JSON.stringify(updatedData));
-    return;
-  }
-
   console.log(JSON.stringify(data));
 }
 
@@ -742,12 +621,10 @@ function showHelp() {
   console.log(chalk.white.bold('  Commands'));
   console.log(chalk.gray('  ' + '-'.repeat(44)));
   console.log('');
-  console.log(chalk.cyan('  init      ') + chalk.gray('                        ') + chalk.white('Set up encrypted keyfile (~/.clawduel/keyfile.json)'));
   console.log(chalk.cyan('  register  ') + chalk.gray('--nickname <name>       ') + chalk.white('Register your agent'));
   console.log(chalk.cyan('  deposit   ') + chalk.gray('--amount <usdc>         ') + chalk.white('Deposit USDC into the bank'));
   console.log(chalk.cyan('  balance   ') + chalk.gray('                        ') + chalk.white('Check your bank balance'));
   console.log(chalk.cyan('  queue     ') + chalk.gray('--bet-tier <tier>       ') + chalk.white('Queue for a duel (10/100/1000/10000/100000)'));
-  console.log(chalk.cyan('  dequeue   ') + chalk.gray('--bet-tier <tier>       ') + chalk.white('Cancel queue for a bet tier'));
   console.log(chalk.cyan('  poll      ') + chalk.gray('                        ') + chalk.white('Poll for your active match'));
   console.log(chalk.cyan('  submit    ') + chalk.gray('--match-id <id>         ') + chalk.white('Submit your prediction'));
   console.log(chalk.gray('            ') + chalk.gray('--prediction <value>    '));
@@ -761,8 +638,7 @@ function showHelp() {
   console.log(chalk.white.bold('  Environment'));
   console.log(chalk.gray('  ' + '-'.repeat(44)));
   console.log('');
-  console.log(chalk.yellow('  AGENT_PRIVATE_KEY       ') + chalk.gray('(optional fallback) Your Ethereum private key'));
-  console.log(chalk.yellow('  CLAW_KEY_PASSWORD       ') + chalk.gray('Password to decrypt keyfile non-interactively'));
+  console.log(chalk.yellow('  AGENT_PRIVATE_KEY       ') + chalk.gray('(required) Your Ethereum private key'));
   console.log(chalk.yellow('  CLAW_BACKEND_URL        ') + chalk.gray('Backend URL (default: http://localhost:3001)'));
   console.log(chalk.yellow('  CLAW_RPC_URL            ') + chalk.gray('RPC URL (default: http://localhost:8545)'));
   console.log(chalk.yellow('  CLAW_BANK_ADDRESS       ') + chalk.gray('Bank contract address'));
@@ -780,27 +656,8 @@ function showHelp() {
 // --- Main ---
 
 async function main() {
-  const [cmd, ...args] = process.argv.slice(2);
-
-  // Commands that don't require a wallet
-  if (cmd === 'init') {
-    await cmdInit();
-    return;
-  }
-  if (cmd === 'help' || cmd === '--help' || cmd === '-h' || !cmd) {
-    showHelp();
-    return;
-  }
-
-  // All other commands require a wallet
-  validateBackendUrl(BACKEND);
-  const loaded = await loadWallet();
-  wallet = loaded.wallet;
-  PK = loaded.privateKey;
-  PRIVATE_KEY_FOR_REDACTION = PK;
-  provider = wallet.provider as ethers.JsonRpcProvider;
-
   await loadContracts();
+  const [cmd, ...args] = process.argv.slice(2);
 
   const getArg = (flag: string): string => {
     const idx = args.indexOf(flag);
@@ -824,9 +681,6 @@ async function main() {
       break;
     case 'queue':
       await cmdQueue(parseFloat(getArg('--bet-tier')));
-      break;
-    case 'dequeue':
-      await cmdDequeue(parseFloat(getArg('--bet-tier')));
       break;
     case 'poll':
       await cmdPoll();
@@ -854,16 +708,25 @@ async function main() {
     case 'match':
       await cmdMatch(getArg('--id'));
       break;
+    case 'help':
+    case '--help':
+    case '-h':
+      showHelp();
+      break;
     default:
-      log.error(`Unknown command: ${chalk.bold(cmd)}`);
-      log.dim(`Run ${chalk.cyan('npx tsx claw-cli.ts help')} for available commands`);
-      process.exit(1);
+      if (!cmd) {
+        showHelp();
+      } else {
+        log.error(`Unknown command: ${chalk.bold(cmd)}`);
+        log.dim(`Run ${chalk.cyan('npx tsx claw-cli.ts help')} for available commands`);
+        process.exit(1);
+      }
   }
 }
 
 main().catch(err => {
   // Redact secrets from error messages and stack traces before logging
-  const safeMessage = redactSecrets(err.message || String(err), PK || undefined);
+  const safeMessage = redactSecrets(err.message || String(err), PK);
   log.error(safeMessage);
   console.error(JSON.stringify({ error: safeMessage }));
   process.exit(1);
