@@ -30,10 +30,14 @@
  *   matches    [--status <filter>] [--page <n>] [--category <cat>] [--from <ISO>] [--to <ISO>]
  *   match      --id <matchId>
  *
+ * Global Options:
+ *   --agent <address>   Select which keystore to use (for multi-agent setups)
+ *
  * Environment:
  *   AGENT_PRIVATE_KEY  - optional fallback (keyfile preferred)
  *   CLAW_BACKEND_URL   - default: http://localhost:3001
  *   CLAW_RPC_URL       - default: http://localhost:8545
+ *   CLAW_AGENT_ADDRESS - select keystore by address (alternative to --agent)
  */
 import { ethers } from 'ethers';
 import chalk from 'chalk';
@@ -940,11 +944,17 @@ function showHelp() {
   console.log(chalk.cyan('  match     ') + chalk.gray('--id <matchId>          ') + chalk.white('View match details'));
   console.log(chalk.cyan('  help      ') + chalk.gray('                        ') + chalk.white('Show this help'));
   console.log('');
+  console.log(chalk.white.bold('  Global Options'));
+  console.log(chalk.gray('  ' + '-'.repeat(44)));
+  console.log('');
+  console.log(chalk.yellow('  --agent <address>       ') + chalk.white('Select keystore by agent address'));
+  console.log('');
   console.log(chalk.white.bold('  Environment'));
   console.log(chalk.gray('  ' + '-'.repeat(44)));
   console.log('');
   console.log(chalk.yellow('  AGENT_PRIVATE_KEY       ') + chalk.gray('(optional fallback) Your Ethereum private key'));
   console.log(chalk.yellow('  CLAW_KEY_PASSWORD       ') + chalk.gray('Password to decrypt keyfile non-interactively'));
+  console.log(chalk.yellow('  CLAW_AGENT_ADDRESS      ') + chalk.gray('Select keystore by address (or use --agent)'));
   console.log(chalk.yellow('  CLAW_BACKEND_URL        ') + chalk.gray('Backend URL (default: http://localhost:3001)'));
   console.log(chalk.yellow('  CLAW_RPC_URL            ') + chalk.gray('RPC URL (default: http://localhost:8545)'));
   console.log(chalk.yellow('  CLAW_BANK_ADDRESS       ') + chalk.gray('Bank contract address'));
