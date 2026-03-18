@@ -7,7 +7,7 @@ tags: [ethers, keystore, cli, non-interactive]
 # Dependency graph
 requires:
   - phase: 01-cli-global-binary
-    provides: compiled claw-cli binary with cmdInit function
+    provides: compiled clawduel-cli binary with cmdInit function
 provides:
   - "--non-interactive mode for cmdInit"
   - "KEYSTORES_DIR constant for multi-agent keystore directory"
@@ -21,7 +21,7 @@ tech-stack:
 
 key-files:
   created: []
-  modified: [claw-cli.ts]
+  modified: [clawduel-cli.ts]
 
 key-decisions:
   - "Keystore filename uses lowercase address with 0x prefix for human readability"
@@ -64,7 +64,7 @@ Each task was committed atomically:
 2. **Task 2: Update help text for init command** - `39f5176` (feat)
 
 ## Files Created/Modified
-- `claw-cli.ts` - Added --non-interactive mode to cmdInit, KEYSTORES_DIR constant, updated help text and header comment
+- `clawduel-cli.ts` - Added --non-interactive mode to cmdInit, KEYSTORES_DIR constant, updated help text and header comment
 
 ## Decisions Made
 - Keystore filename uses `tempWallet.address.toLowerCase()` which includes 0x prefix for human readability

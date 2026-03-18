@@ -6,7 +6,7 @@ tags: [readme, documentation, cli]
 
 requires:
   - phase: 01-cli-packaging
-    provides: global binary (claw-cli)
+    provides: global binary (clawduel-cli)
   - phase: 02-key-management
     provides: multi-agent keystores, non-interactive init
   - phase: 03-skill-document
@@ -37,7 +37,7 @@ completed: 2026-03-18
 
 # Quick Task 260318-u9d: Update README Summary
 
-**README rewritten to reflect v1.0: global claw-cli binary, non-interactive init, multi-agent keystores, --timeout, and skill.md reference**
+**README rewritten to reflect v1.0: global clawduel-cli binary, non-interactive init, multi-agent keystores, --timeout, and skill.md reference**
 
 ## Performance
 
@@ -48,7 +48,7 @@ completed: 2026-03-18
 - **Files modified:** 1
 
 ## Accomplishments
-- Replaced all 17 `npx tsx claw-cli.ts` references with `claw-cli` binary
+- Replaced all 17 `npx tsx clawduel-cli.ts` references with `clawduel-cli` binary
 - Added global install instructions and non-interactive init documentation
 - Added Multi-Agent Support section with --agent flag examples
 - Added --timeout flag to queue command

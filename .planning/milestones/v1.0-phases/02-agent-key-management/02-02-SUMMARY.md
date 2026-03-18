@@ -21,7 +21,7 @@ tech-stack:
 
 key-files:
   created: []
-  modified: ["claw-cli.ts"]
+  modified: ["clawduel-cli.ts"]
 
 key-decisions:
   - "Keystore discovery checks ~/.clawduel/keystores/ before legacy keyfile.json for backward compat"
@@ -64,7 +64,7 @@ Each task was committed atomically:
 2. **Task 2: Update help text for --agent flag and CLAW_AGENT_ADDRESS env var** - `39b2c93` (feat)
 
 ## Files Created/Modified
-- `claw-cli.ts` - Added discoverKeystores(), selectKeystore(), refactored loadWallet(agentAddress?), --agent parsing in main(), updated help text
+- `clawduel-cli.ts` - Added discoverKeystores(), selectKeystore(), refactored loadWallet(agentAddress?), --agent parsing in main(), updated help text
 
 ## Decisions Made
 - Keystore discovery checks ~/.clawduel/keystores/ before legacy keyfile.json to prioritize new multi-agent path while maintaining backward compatibility

@@ -8,7 +8,7 @@
 clawduel-cli/
 ├── src/                    # TypeScript source for SDK (published to npm)
 │   └── index.ts           # ClawClient class, security utils, type exports
-├── claw-cli.ts            # CLI wrapper around ClawClient (entry point for agents)
+├── clawduel-cli.ts            # CLI wrapper around ClawClient (entry point for agents)
 ├── register-agent.ts      # Example registration script (reference implementation)
 ├── tsconfig.json          # TypeScript configuration (ES2020, CommonJS)
 ├── package.json           # Dependencies: ethers, chalk, dotenv
@@ -28,8 +28,8 @@ clawduel-cli/
 
 **Root (CLI + Entry Point):**
 - Purpose: CLI executable and configuration
-- Contains: `claw-cli.ts` (967 lines, all logic in one file), `register-agent.ts` example
-- Key files: `claw-cli.ts`, `tsconfig.json`, `package.json`
+- Contains: `clawduel-cli.ts` (967 lines, all logic in one file), `register-agent.ts` example
+- Key files: `clawduel-cli.ts`, `tsconfig.json`, `package.json`
 
 **.planning/codebase/ (Analysis Documentation):**
 - Purpose: GSD-generated architecture and conventions docs
@@ -40,7 +40,7 @@ clawduel-cli/
 
 **Entry Points:**
 - `src/index.ts`: SDK library entry point (exported as `dist/index.js` in package.json main)
-- `claw-cli.ts`: CLI entry point (`#!/usr/bin/env npx tsx` shebang, executable)
+- `clawduel-cli.ts`: CLI entry point (`#!/usr/bin/env npx tsx` shebang, executable)
 - `register-agent.ts`: Example script demonstrating authentication flow
 
 **Configuration:**
@@ -50,8 +50,8 @@ clawduel-cli/
 **Core Logic:**
 - `src/index.ts` (lines 13-132): Security utilities (SECRET_PATTERNS, detection, redaction, validation)
 - `src/index.ts` (lines 175-398): ClawClient class (wallet, provider, contracts, API methods)
-- `claw-cli.ts` (lines 204-828): Command handlers (register, deposit, balance, queue, poll, submit, matches, etc.)
-- `claw-cli.ts` (lines 879-967): Main dispatcher and error handling
+- `clawduel-cli.ts` (lines 204-828): Command handlers (register, deposit, balance, queue, poll, submit, matches, etc.)
+- `clawduel-cli.ts` (lines 879-967): Main dispatcher and error handling
 
 **Testing:**
 - No test files present. Manual testing documented in `skill.md`.
@@ -59,7 +59,7 @@ clawduel-cli/
 ## Naming Conventions
 
 **Files:**
-- `kebab-case.ts` for all TypeScript files (e.g., `claw-cli.ts`, `register-agent.ts`)
+- `kebab-case.ts` for all TypeScript files (e.g., `clawduel-cli.ts`, `register-agent.ts`)
 - Compiled output in `dist/` directory (not committed)
 
 **Directories:**
@@ -67,7 +67,7 @@ clawduel-cli/
 - UPPERCASE for metadata dirs (`.planning/`)
 - descriptive names (PRPs, .git)
 
-**Functions (claw-cli.ts):**
+**Functions (clawduel-cli.ts):**
 - camelCase: `cmdInit()`, `cmdRegister()`, `cmdDeposit()`, `cmdBalance()`, `cmdQueue()`, `cmdDequeue()`, `cmdPoll()`, `cmdSubmit()`, `cmdStatus()`, `cmdMatches()`, `cmdMatch()`
 - Prefixed with `cmd` for CLI commands
 - camelCase for helpers: `loadWallet()`, `loadContracts()`, `promptLine()`, `apiPost()`, `apiGet()`, `sanitizePrediction()`
@@ -86,14 +86,14 @@ clawduel-cli/
 ## Where to Add New Code
 
 **New CLI Command:**
-1. Add handler function: `claw-cli.ts` near line 407 (after existing cmd* functions)
+1. Add handler function: `clawduel-cli.ts` near line 407 (after existing cmd* functions)
    - Name: `async function cmd<Name>(args...)`
    - Load wallet if needed (auto-loaded in main before switch)
    - Use `log.*` for output
    - Call `apiPost()` or `apiGet()` for backend communication
    - Output JSON on final line for machine parsing
 
-2. Add case to switch in `main()`: `claw-cli.ts` line 912
+2. Add case to switch in `main()`: `clawduel-cli.ts` line 912
    ```typescript
    case 'newcommand':
      await cmdNewCommand(args);
@@ -104,7 +104,7 @@ clawduel-cli/
    - Add to Commands section (line 840-856)
    - Format: `chalk.cyan('  cmdname   ') + chalk.gray('[options]') + chalk.white('Description')`
 
-4. Update command documentation: Shebang comments at top of `claw-cli.ts` (line 19-31)
+4. Update command documentation: Shebang comments at top of `clawduel-cli.ts` (line 19-31)
 
 **New Feature in ClawClient:**
 1. Add method to `src/index.ts` ClawClient class (after line 397)
@@ -119,13 +119,13 @@ clawduel-cli/
 3. Ensure method calls `assertNoSecretLeak(body, this.privateKey)` before `apiPost()`
 
 **New Shared Utility (Security, Validation):**
-1. Add to appropriate section in both `src/index.ts` AND `claw-cli.ts`
+1. Add to appropriate section in both `src/index.ts` AND `clawduel-cli.ts`
    - Security utilities: around line 13-132
    - Validation: near URL validation (line 81-107 in src, 118-134 in cli)
 
 2. If SDK-only: Add to `src/index.ts` only, export if public
 
-3. If CLI-only: Add to `claw-cli.ts` only
+3. If CLI-only: Add to `clawduel-cli.ts` only
 
 **Blockchain Interaction (On-Chain):**
 - Add to `cmdXxx()` or ClawClient method
@@ -168,7 +168,7 @@ import chalk from 'chalk';             // External: colored CLI output
 import dotenv from 'dotenv';           // External: .env loading (optional, not used in SDK)
 ```
 
-**CLI (`claw-cli.ts`) imports:**
+**CLI (`clawduel-cli.ts`) imports:**
 ```typescript
 import { ethers } from 'ethers';      // External: blockchain
 import chalk from 'chalk';             // External: colored output

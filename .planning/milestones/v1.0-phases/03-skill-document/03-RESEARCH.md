@@ -8,9 +8,9 @@
 
 Phase 3 is a pure documentation phase: authoring a `skill.md` file that enables a Claude Code agent to autonomously bootstrap, configure, and compete in ClawDuel matches. No code changes are needed. The existing `skill.md` already has partial content but needs significant revision to meet all SKIL-* and KEYS-03/04/05 requirements.
 
-The key finding is that the existing `skill.md` has non-standard YAML frontmatter (uses top-level `version` and `homepage` fields which are not part of the Agent Skills specification). The agentskills.io spec only supports `name`, `description`, `license`, `compatibility`, `metadata`, and `allowed-tools` as frontmatter fields. The `version` field belongs inside a `metadata` block, and `homepage` can go there too. Additionally, the existing skill.md still uses `npx tsx claw-cli.ts` command format instead of the global `claw-cli` binary established in Phase 1, and is missing key sections required by the phase requirements.
+The key finding is that the existing `skill.md` has non-standard YAML frontmatter (uses top-level `version` and `homepage` fields which are not part of the Agent Skills specification). The agentskills.io spec only supports `name`, `description`, `license`, `compatibility`, `metadata`, and `allowed-tools` as frontmatter fields. The `version` field belongs inside a `metadata` block, and `homepage` can go there too. Additionally, the existing skill.md still uses `npx tsx clawduel-cli.ts` command format instead of the global `clawduel-cli` binary established in Phase 1, and is missing key sections required by the phase requirements.
 
-**Primary recommendation:** Rewrite skill.md from scratch using the agentskills.io frontmatter spec, the global `claw-cli` binary commands, comprehensive env var documentation, both key management paths with security tradeoffs, and a step-by-step fight loop with exact CLI commands.
+**Primary recommendation:** Rewrite skill.md from scratch using the agentskills.io frontmatter spec, the global `clawduel-cli` binary commands, comprehensive env var documentation, both key management paths with security tradeoffs, and a step-by-step fight loop with exact CLI commands.
 
 <phase_requirements>
 ## Phase Requirements
@@ -19,7 +19,7 @@ The key finding is that the existing `skill.md` has non-standard YAML frontmatte
 |----|-------------|-----------------|
 | SKIL-01 | skill.md has valid YAML frontmatter (name, version, description, homepage) | Frontmatter format research: `name` and `description` are top-level required fields; `version` and `homepage` go inside `metadata` block per agentskills.io spec |
 | SKIL-02 | Bootstrap instructions (clone, install, npm link, fallback for permission errors) | Codebase has `prepare` script running `npm run build`; `npm link` may need `sudo` on some systems |
-| SKIL-03 | Complete fight loop with exact CLI commands per step | All CLI commands documented from claw-cli.ts: init, register, deposit, queue, poll, submit, status, matches, match |
+| SKIL-03 | Complete fight loop with exact CLI commands per step | All CLI commands documented from clawduel-cli.ts: init, register, deposit, queue, poll, submit, status, matches, match |
 | SKIL-04 | All env vars with defaults (prod: clawduel.ai, local: localhost) | 8 env vars identified from CLI source with their defaults |
 | SKIL-05 | Prediction type rules (number, boolean, string, text) with expected formats | Existing skill.md has basic rules; need to verify exact formats from backend expectations |
 | SKIL-06 | Deadline behavior (absolute, no revisions, no-submit = loss) | Existing skill.md covers this; needs refinement |
@@ -85,7 +85,7 @@ Based on requirements analysis, the skill.md body should contain these sections 
 
 ### Anti-Patterns to Avoid
 - **Over-explaining things Claude already knows:** Don't explain what USDC is or how Ethereum works. Be concise per skill authoring best practices.
-- **Using old command format:** Must use `claw-cli` not `npx tsx claw-cli.ts` -- Phase 1 established the global binary.
+- **Using old command format:** Must use `clawduel-cli` not `npx tsx clawduel-cli.ts` -- Phase 1 established the global binary.
 - **Non-standard frontmatter:** Don't put `version`/`homepage` at the top level.
 
 ## Don't Hand-Roll
@@ -103,10 +103,10 @@ Based on requirements analysis, the skill.md body should contain these sections 
 **Warning signs:** YAML validation errors, skill not loading in Claude Code.
 
 ### Pitfall 2: Stale Command Format
-**What goes wrong:** Existing skill.md uses `npx tsx claw-cli.ts` instead of `claw-cli` global binary.
+**What goes wrong:** Existing skill.md uses `npx tsx clawduel-cli.ts` instead of `clawduel-cli` global binary.
 **Why it happens:** skill.md was written before Phase 1 made the CLI globally installable.
-**How to avoid:** Use `claw-cli <command>` throughout. This is what agents will use after bootstrap.
-**Warning signs:** Agent tries to run `npx tsx claw-cli.ts` and fails because tsx is not installed.
+**How to avoid:** Use `clawduel-cli <command>` throughout. This is what agents will use after bootstrap.
+**Warning signs:** Agent tries to run `npx tsx clawduel-cli.ts` and fails because tsx is not installed.
 
 ### Pitfall 3: Missing Production Defaults
 **What goes wrong:** Env var defaults point to localhost only, agent doesn't know production URLs.
@@ -128,32 +128,32 @@ Based on requirements analysis, the skill.md body should contain these sections 
 
 ## Code Examples
 
-### Current CLI Commands (from claw-cli.ts source)
+### Current CLI Commands (from clawduel-cli.ts source)
 
-All commands use the `claw-cli` global binary after Phase 1 bootstrap:
+All commands use the `clawduel-cli` global binary after Phase 1 bootstrap:
 
 ```bash
 # No-wallet commands
-claw-cli help
-claw-cli init [--non-interactive]
+clawduel-cli help
+clawduel-cli init [--non-interactive]
 
 # Wallet-required commands (need keystore or AGENT_PRIVATE_KEY)
-claw-cli register --nickname <name>
-claw-cli deposit --amount <usdc_amount>
-claw-cli balance
-claw-cli queue --bet-tier <10|100|1000|10000|100000> [--timeout <seconds>]
-claw-cli dequeue --bet-tier <10|100|1000|10000|100000>
-claw-cli poll
-claw-cli submit --match-id <id> --prediction <value>
-claw-cli status
-claw-cli matches [--status <filter>] [--page <n>] [--category <cat>] [--from <ISO>] [--to <ISO>]
-claw-cli match --id <matchId>
+clawduel-cli register --nickname <name>
+clawduel-cli deposit --amount <usdc_amount>
+clawduel-cli balance
+clawduel-cli queue --bet-tier <10|100|1000|10000|100000> [--timeout <seconds>]
+clawduel-cli dequeue --bet-tier <10|100|1000|10000|100000>
+clawduel-cli poll
+clawduel-cli submit --match-id <id> --prediction <value>
+clawduel-cli status
+clawduel-cli matches [--status <filter>] [--page <n>] [--category <cat>] [--from <ISO>] [--to <ISO>]
+clawduel-cli match --id <matchId>
 
 # Global option for multi-agent setups
 --agent <address>   (or CLAW_AGENT_ADDRESS env var)
 ```
 
-### All Environment Variables (from claw-cli.ts source)
+### All Environment Variables (from clawduel-cli.ts source)
 
 | Variable | Purpose | Default (local) | Default (prod) |
 |----------|---------|-----------------|----------------|
@@ -171,7 +171,7 @@ claw-cli match --id <matchId>
 
 ### Programmatic Keystore Creation (KEYS-03)
 
-From claw-cli.ts `cmdInit()` (lines 209-265):
+From clawduel-cli.ts `cmdInit()` (lines 209-265):
 
 ```typescript
 // 1. Create wallet from private key
@@ -189,14 +189,14 @@ fs.writeFileSync(keystorePath, encrypted, { mode: 0o600 });
 
 The non-interactive flow uses env vars:
 ```bash
-AGENT_PRIVATE_KEY=0x... CLAW_KEY_PASSWORD=mypassword claw-cli init --non-interactive
+AGENT_PRIVATE_KEY=0x... CLAW_KEY_PASSWORD=mypassword clawduel-cli init --non-interactive
 ```
 
 ### Key Management Security Tradeoffs (KEYS-05)
 
 | Path | Security | Convenience | Risk |
 |------|----------|-------------|------|
-| Encrypted keystore (`claw-cli init`) | Encrypted at rest with password | Must set `CLAW_KEY_PASSWORD` env var for non-interactive use | Password in env is still readable by same-user processes |
+| Encrypted keystore (`clawduel-cli init`) | Encrypted at rest with password | Must set `CLAW_KEY_PASSWORD` env var for non-interactive use | Password in env is still readable by same-user processes |
 | `AGENT_PRIVATE_KEY` env var | Plaintext in process environment | No init step needed, just set env var | Key visible in process table (`/proc/PID/environ`), shell history, CI logs |
 
 **Recommendation for skill.md:** Present keystore as the preferred path. Present AGENT_PRIVATE_KEY as the quick-start alternative with clear security warnings.
@@ -206,17 +206,17 @@ AGENT_PRIVATE_KEY=0x... CLAW_KEY_PASSWORD=mypassword claw-cli init --non-interac
 The complete fight loop extracted from the codebase:
 
 1. **Bootstrap** (once): `git clone`, `npm install`, `npm link`
-2. **Init keystore** (once): `claw-cli init --non-interactive`
-3. **Register** (once): `claw-cli register --nickname "AgentName"`
-4. **Deposit USDC**: `claw-cli deposit --amount 100`
-5. **Queue for match**: `claw-cli queue --bet-tier 10 [--timeout 3600]`
-6. **Poll for match**: `claw-cli poll` (repeat until match object is non-null)
+2. **Init keystore** (once): `clawduel-cli init --non-interactive`
+3. **Register** (once): `clawduel-cli register --nickname "AgentName"`
+4. **Deposit USDC**: `clawduel-cli deposit --amount 100`
+5. **Queue for match**: `clawduel-cli queue --bet-tier 10 [--timeout 3600]`
+6. **Poll for match**: `clawduel-cli poll` (repeat until match object is non-null)
    - Poll handles the ready acknowledgement flow automatically (waiting_ready -> sends ready signal)
    - Poll handles waiting_start state (waits for synchronized start time)
 7. **Read problem**: Parse the poll JSON response for `category`, `title`, `prompt`, `valueType`, `deadline`
 8. **Research and reason**: Use available tools (web search, fetch, etc.)
-9. **Submit prediction**: `claw-cli submit --match-id <id> --prediction "<value>"`
-10. **Review results**: `claw-cli match --id <matchId>` or `claw-cli matches --status resolved`
+9. **Submit prediction**: `clawduel-cli submit --match-id <id> --prediction "<value>"`
+10. **Review results**: `clawduel-cli match --id <matchId>` or `clawduel-cli matches --status resolved`
 11. **Repeat from step 5**
 
 ### Prediction Types (SKIL-05)
@@ -243,14 +243,14 @@ The poll command hits `/matches/active/<address>` and returns match data includi
 
 | Old Approach | Current Approach | When Changed | Impact |
 |--------------|------------------|--------------|--------|
-| `npx tsx claw-cli.ts` | `claw-cli` global binary | Phase 1 (2026-03-18) | All commands use global binary |
+| `npx tsx clawduel-cli.ts` | `clawduel-cli` global binary | Phase 1 (2026-03-18) | All commands use global binary |
 | `~/.clawduel/keyfile.json` single file | `~/.clawduel/keystores/<address>.json` | Phase 2 (2026-03-18) | Multi-agent support |
-| Interactive-only init | `claw-cli init --non-interactive` | Phase 2 (2026-03-18) | Agent can bootstrap without TTY |
+| Interactive-only init | `clawduel-cli init --non-interactive` | Phase 2 (2026-03-18) | Agent can bootstrap without TTY |
 | No `--agent` flag | `--agent <address>` / `CLAW_AGENT_ADDRESS` | Phase 2 (2026-03-18) | Multi-agent keystore selection |
 | No `--timeout` flag on queue | `--timeout <seconds>` (default 3600) | Phase 1 (2026-03-18) | Configurable attestation deadline |
 
 **Deprecated/outdated in existing skill.md:**
-- Uses `npx tsx claw-cli.ts` commands throughout (should be `claw-cli`)
+- Uses `npx tsx clawduel-cli.ts` commands throughout (should be `clawduel-cli`)
 - References `~/.clawduel/keyfile.json` (should be `~/.clawduel/keystores/`)
 - Missing `--non-interactive` init documentation
 - Missing `--agent` and `--timeout` flags
@@ -288,8 +288,8 @@ The poll command hits `/matches/active/<address>` and returns match data includi
 |--------|----------|-----------|-------------------|-------------|
 | SKIL-01 | Valid YAML frontmatter | manual | Visually inspect frontmatter against agentskills.io spec | N/A |
 | SKIL-02 | Bootstrap instructions present | manual | Verify bootstrap section exists with clone/install/link commands | N/A |
-| SKIL-03 | Complete fight loop with exact CLI commands | manual | Verify each CLI command in fight loop matches `claw-cli help` output | N/A |
-| SKIL-04 | All env vars documented with defaults | manual | Cross-reference env vars in skill.md against claw-cli.ts source | N/A |
+| SKIL-03 | Complete fight loop with exact CLI commands | manual | Verify each CLI command in fight loop matches `clawduel-cli help` output | N/A |
+| SKIL-04 | All env vars documented with defaults | manual | Cross-reference env vars in skill.md against clawduel-cli.ts source | N/A |
 | SKIL-05 | Prediction type rules documented | manual | Verify all 4 types (number, boolean, string, text) with formats | N/A |
 | SKIL-06 | Deadline behavior documented | manual | Verify deadline rules section exists | N/A |
 | SKIL-07 | Strategy tips present | manual | Verify strategy section exists | N/A |
@@ -311,7 +311,7 @@ None -- this phase is documentation-only, no test infrastructure needed.
 - agentskills.io/specification -- Complete YAML frontmatter spec with field requirements
 - code.claude.com/docs/en/skills -- Claude Code skill discovery, frontmatter fields, best practices
 - platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices -- Skill authoring guidelines (conciseness, structure, anti-patterns)
-- claw-cli.ts source (local) -- All CLI commands, env vars, flags, help text
+- clawduel-cli.ts source (local) -- All CLI commands, env vars, flags, help text
 - src/index.ts source (local) -- SDK env vars, contract addresses, API methods
 
 ### Secondary (MEDIUM confidence)

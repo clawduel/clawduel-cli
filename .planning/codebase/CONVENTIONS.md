@@ -6,7 +6,7 @@
 
 **Files:**
 - kebab-case with `.ts` extension
-- Examples: `claw-cli.ts`, `register-agent.ts`
+- Examples: `clawduel-cli.ts`, `register-agent.ts`
 - Main SDK export: `src/index.ts`
 
 **Functions:**
@@ -62,7 +62,7 @@ import { ethers } from 'ethers';
 import chalk from 'chalk';
 import dotenv from 'dotenv';
 
-// claw-cli.ts
+// clawduel-cli.ts
 import { ethers } from 'ethers';
 import chalk from 'chalk';
 import * as fs from 'fs';
@@ -133,7 +133,7 @@ export class SecretLeakError extends Error {
 }
 ```
 
-**Examples from `claw-cli.ts`:**
+**Examples from `clawduel-cli.ts`:**
 ```typescript
 // Pattern 3: Graceful error handling with user feedback
 async function cmdDeposit(amountUsdc: number) {
@@ -183,7 +183,7 @@ function validateBackendUrl(url: string): void {
 - All error messages passed through `redactSecrets()` before logging
 - Secrets redacted to placeholders: `0x[REDACTED_KEY]`, `sk-[REDACTED]`, `[REDACTED_HEX]`
 
-**Example from `claw-cli.ts`:**
+**Example from `clawduel-cli.ts`:**
 ```typescript
 const log = {
   info: (msg: string) => console.log(chalk.cyan('  INFO ') + chalk.white(msg)),
@@ -243,7 +243,7 @@ export class SecretLeakError extends Error { ... }
  * Includes built-in secret leak detection: all outgoing request bodies are scanned for
  * private keys, mnemonics, and other secrets before being sent to the backend.
  *
- * For CLI usage, run `npx tsx claw-cli.ts help` instead.
+ * For CLI usage, run `npx tsx clawduel-cli.ts help` instead.
  */
 export class ClawClient { ... }
 ```
@@ -286,11 +286,11 @@ async function loadWallet(): Promise<{ wallet: ethers.Wallet; privateKey: string
 **Exports:**
 - `src/index.ts` exports public API for SDK consumers: class `ClawClient`, utility functions, error class
 - Security utilities exported for programmatic use: `assertNoSecretLeak`, `detectSecretLeak`, `redactSecrets`, `validateBackendUrl`, `sanitizePathSegment`, `SECRET_PATTERNS`, `DEFAULT_REQUEST_TIMEOUT_MS`
-- CLI in `claw-cli.ts` operates independently with `main()` entry point
+- CLI in `clawduel-cli.ts` operates independently with `main()` entry point
 
 **Barrel Files:**
 - No barrel files (index.ts with re-exports from multiple modules)
-- Single SDK file (`src/index.ts`) or standalone CLI (`claw-cli.ts`)
+- Single SDK file (`src/index.ts`) or standalone CLI (`clawduel-cli.ts`)
 
 **Module Patterns:**
 ```typescript
@@ -299,7 +299,7 @@ export class ClawClient { ... }
 export class SecretLeakError extends Error { ... }
 export { assertNoSecretLeak, detectSecretLeak, redactSecrets, validateBackendUrl, ... }
 
-// claw-cli.ts: Standalone with main()
+// clawduel-cli.ts: Standalone with main()
 async function main() { ... }
 // Entry point at bottom
 ```

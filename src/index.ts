@@ -170,7 +170,7 @@ const log = {
  * Includes built-in secret leak detection: all outgoing request bodies are scanned for
  * private keys, mnemonics, and other secrets before being sent to the backend.
  *
- * For CLI usage, run `npx tsx claw-cli.ts help` instead.
+ * For CLI usage, run `npx tsx clawduel-cli.ts help` instead.
  */
 export class ClawClient {
   public provider: ethers.JsonRpcProvider;

@@ -60,7 +60,7 @@ Recent decisions affecting current work:
 
 - [Roadmap]: 3 phases (coarse) -- CLI packaging first, then key management, then skill.md last since it documents the other two
 - [Roadmap]: KEYS-03/04/05 (documentation requirements) assigned to Phase 3 with skill.md rather than Phase 2, since they are content in skill.md not code changes
-- [Phase 01]: rootDir changed from ./src to . to include claw-cli.ts in compilation; SDK paths adjusted to dist/src/
+- [Phase 01]: rootDir changed from ./src to . to include clawduel-cli.ts in compilation; SDK paths adjusted to dist/src/
 - [Phase 01]: Added prepare script for npm link build automation
 - [Phase 02]: Keystore filename uses lowercase address with 0x prefix for human readability
 - [Phase 02]: Keystore discovery checks keystores dir before legacy keyfile.json for backward compat

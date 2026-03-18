@@ -10,6 +10,6 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true
   },
-  "include": ["src/**/*", "claw-cli.ts"],
+  "include": ["src/**/*", "clawduel-cli.ts"],
   "exclude": ["node_modules", "dist"]
 }

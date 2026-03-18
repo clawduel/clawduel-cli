@@ -26,22 +26,22 @@ npm run build              # TypeScript compilation (only automated check)
 **Where Tests Would Go:**
 If a testing framework is added, test files should be co-located with source code:
 - `src/index.test.ts` alongside `src/index.ts`
-- `claw-cli.test.ts` alongside `claw-cli.ts`
+- `clawduel-cli.test.ts` alongside `clawduel-cli.ts`
 
 ## Manual Testing Patterns
 
 **CLI Commands Tested Manually:**
 - `npm run build` - Validates TypeScript compilation
-- `npx tsx claw-cli.ts init` - Encrypted keyfile setup
-- `npx tsx claw-cli.ts deposit --amount <usdc>` - USDC deposit
-- `npx tsx claw-cli.ts balance` - Check balance
-- `npx tsx claw-cli.ts queue --bet-tier <amount>` - Queue for match
-- `npx tsx claw-cli.ts dequeue --bet-tier <amount>` - Leave queue
-- `npx tsx claw-cli.ts poll` - Check current match
-- `npx tsx claw-cli.ts submit --match-id <id> --prediction <value>` - Submit prediction
-- `npx tsx claw-cli.ts status` - Agent info
-- `npx tsx claw-cli.ts matches [--status <filter>] [--page <n>] [--category <cat>] [--from <ISO>] [--to <ISO>]` - List matches
-- `npx tsx claw-cli.ts match --id <matchId>` - Get specific match
+- `npx tsx clawduel-cli.ts init` - Encrypted keyfile setup
+- `npx tsx clawduel-cli.ts deposit --amount <usdc>` - USDC deposit
+- `npx tsx clawduel-cli.ts balance` - Check balance
+- `npx tsx clawduel-cli.ts queue --bet-tier <amount>` - Queue for match
+- `npx tsx clawduel-cli.ts dequeue --bet-tier <amount>` - Leave queue
+- `npx tsx clawduel-cli.ts poll` - Check current match
+- `npx tsx clawduel-cli.ts submit --match-id <id> --prediction <value>` - Submit prediction
+- `npx tsx clawduel-cli.ts status` - Agent info
+- `npx tsx clawduel-cli.ts matches [--status <filter>] [--page <n>] [--category <cat>] [--from <ISO>] [--to <ISO>]` - List matches
+- `npx tsx clawduel-cli.ts match --id <matchId>` - Get specific match
 
 **Programmatic Testing (SDK):**
 - `ClawClient` importable from `src/index.ts` for agent use
@@ -55,7 +55,7 @@ If a testing framework is added, test files should be co-located with source cod
 **Manual Coverage Areas (if testing were added):**
 
 ### Critical Security Functions (HIGH PRIORITY)
-Files: `src/index.ts`, `claw-cli.ts`
+Files: `src/index.ts`, `clawduel-cli.ts`
 
 1. **Secret Leak Detection:**
    - `detectSecretLeak()` - Regex patterns for detecting secrets
@@ -95,7 +95,7 @@ Files: `src/index.ts`, `claw-cli.ts`
      - Special characters stripped
 
 ### API Request Handling (HIGH PRIORITY)
-Files: `src/index.ts` (ClawClient class), `claw-cli.ts` (apiPost, apiGet)
+Files: `src/index.ts` (ClawClient class), `clawduel-cli.ts` (apiPost, apiGet)
 
 1. **Request Timeout:**
    - Default 30 seconds enforced
@@ -116,7 +116,7 @@ Files: `src/index.ts` (ClawClient class), `claw-cli.ts` (apiPost, apiGet)
    - Network errors converted to descriptive messages
 
 ### Key Management (HIGH PRIORITY)
-Files: `claw-cli.ts`
+Files: `clawduel-cli.ts`
 
 1. **Keyfile Encryption:**
    - `cmdInit()` - Private key encryption via ethers.Wallet
@@ -136,7 +136,7 @@ Files: `claw-cli.ts`
      - Proper error when neither available
 
 ### Contract Interaction (MEDIUM PRIORITY)
-Files: `claw-cli.ts`
+Files: `clawduel-cli.ts`
 
 1. **Balance Queries:**
    - `cmdBalance()` - Queries Bank contract
@@ -163,7 +163,7 @@ Files: `claw-cli.ts`
      - Signature verified off-chain
 
 ### Data Sanitization (MEDIUM PRIORITY)
-Files: `claw-cli.ts`
+Files: `clawduel-cli.ts`
 
 1. **Prediction Sanitization:**
    - `sanitizePrediction()` - Text cleanup before submission
@@ -176,7 +176,7 @@ Files: `claw-cli.ts`
      - Leading/trailing whitespace trimmed
 
 ### Command Logic (MEDIUM PRIORITY)
-Files: `claw-cli.ts`
+Files: `clawduel-cli.ts`
 
 Commands with side effects that need testing:
 - `cmdQueue()` - Nonce tracking, match queueing
@@ -248,7 +248,7 @@ describe('ClawClient', () => {
   })
 })
 
-// claw-cli.test.ts
+// clawduel-cli.test.ts
 describe('CLI Commands', () => {
   describe('cmdInit', () => {
     it('should create encrypted keyfile', () => { ... })

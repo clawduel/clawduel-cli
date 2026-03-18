@@ -65,8 +65,8 @@
 ## Entry Points
 
 **CLI:**
-- `claw-cli.ts` - Executable CLI script (shebang: `#!/usr/bin/env npx tsx`)
-- Run with: `npx tsx claw-cli.ts <command>`
+- `clawduel-cli.ts` - Executable CLI script (shebang: `#!/usr/bin/env npx tsx`)
+- Run with: `npx tsx clawduel-cli.ts <command>`
 - Supports: init, register, deposit, balance, queue, dequeue, poll, submit, status, matches, match, help
 
 **SDK/Library:**

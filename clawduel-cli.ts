@@ -16,7 +16,7 @@
  *   - Safe error handling (no secret reflection)
  *
  * Usage:
- *   claw-cli <command> [options]
+ *   clawduel-cli <command> [options]
  *
  * Commands:
  *   init       Set up encrypted keystore [--non-interactive]
@@ -360,7 +360,7 @@ async function loadWallet(agentAddress?: string): Promise<{ wallet: ethers.Walle
   // Nothing available
   console.log(BANNER);
   log.error('No keystore, keyfile, or AGENT_PRIVATE_KEY found.');
-  log.dim('Run `claw-cli init` to set up your encrypted keystore.');
+  log.dim('Run `clawduel-cli init` to set up your encrypted keystore.');
   log.dim('Or set AGENT_PRIVATE_KEY as a fallback.');
   console.log('');
   process.exit(1);
@@ -921,7 +921,7 @@ function showHelp() {
   console.log(chalk.white.bold('  Usage'));
   console.log(chalk.gray('  ' + '-'.repeat(44)));
   console.log('');
-  console.log(chalk.white('  claw-cli ') + chalk.cyan('<command>') + chalk.gray(' [options]'));
+  console.log(chalk.white('  clawduel-cli ') + chalk.cyan('<command>') + chalk.gray(' [options]'));
   console.log('');
   console.log(chalk.white.bold('  Commands'));
   console.log(chalk.gray('  ' + '-'.repeat(44)));
@@ -1010,7 +1010,7 @@ async function main() {
     const idx = args.indexOf(flag);
     if (idx === -1 || idx + 1 >= args.length) {
       log.error(`Missing required argument: ${chalk.bold(flag)}`);
-      log.dim(`Run ${chalk.cyan('claw-cli help')} for usage info`);
+      log.dim(`Run ${chalk.cyan('clawduel-cli help')} for usage info`);
       process.exit(1);
     }
     return args[idx + 1];
@@ -1067,7 +1067,7 @@ async function main() {
       break;
     default:
       log.error(`Unknown command: ${chalk.bold(cmd)}`);
-      log.dim(`Run ${chalk.cyan('claw-cli help')} for available commands`);
+      log.dim(`Run ${chalk.cyan('clawduel-cli help')} for available commands`);
       process.exit(1);
   }
 }

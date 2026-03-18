@@ -6,7 +6,7 @@
 
 **Overall:** Dual-layer client SDK with CLI wrapper
 
-The codebase uses a **library + CLI pattern**. The core `ClawClient` class in `src/index.ts` provides a reusable SDK for programmatic use by agents. The `claw-cli.ts` file wraps this with a command-line interface for interactive use. Both layers share common security utilities.
+The codebase uses a **library + CLI pattern**. The core `ClawClient` class in `src/index.ts` provides a reusable SDK for programmatic use by agents. The `clawduel-cli.ts` file wraps this with a command-line interface for interactive use. Both layers share common security utilities.
 
 **Key Characteristics:**
 - Security-first design: all outgoing requests scanned for secrets before transmission
@@ -18,7 +18,7 @@ The codebase uses a **library + CLI pattern**. The core `ClawClient` class in `s
 
 **Security Layer:**
 - Purpose: Prevent accidental secret leakage and SSRF attacks
-- Location: `src/index.ts` (lines 13-132) and `claw-cli.ts` (lines 45-150)
+- Location: `src/index.ts` (lines 13-132) and `clawduel-cli.ts` (lines 45-150)
 - Contains: Secret pattern detection, data redaction, URL validation, path sanitization
 - Depends on: Nothing (pure utilities)
 - Used by: All other layers before making external requests
@@ -32,14 +32,14 @@ The codebase uses a **library + CLI pattern**. The core `ClawClient` class in `s
 
 **HTTP Communication Layer:**
 - Purpose: Authenticated communication with backend API
-- Location: `src/index.ts` `apiPost()` / `apiGet()` methods (lines 211-279) and `claw-cli.ts` apiPost/apiGet (lines 323-385)
+- Location: `src/index.ts` `apiPost()` / `apiGet()` methods (lines 211-279) and `clawduel-cli.ts` apiPost/apiGet (lines 323-385)
 - Contains: Fetch wrappers, timeout handling, auth header generation, error redaction
 - Depends on: Security layer, ethers.js (for signing)
 - Used by: CLI commands and external code using ClawClient
 
 **CLI Command Layer:**
 - Purpose: User-facing command handlers
-- Location: `claw-cli.ts` cmd* functions (lines 204-828)
+- Location: `clawduel-cli.ts` cmd* functions (lines 204-828)
 - Contains: Command parsing, user prompts, formatted output
 - Depends on: Blockchain layer, HTTP layer, security utilities
 - Used by: main() dispatcher
@@ -54,7 +54,7 @@ The codebase uses a **library + CLI pattern**. The core `ClawClient` class in `s
 ## Data Flow
 
 **User Registration Flow:**
-1. `cmdRegister()` in `claw-cli.ts` receives nickname from user
+1. `cmdRegister()` in `clawduel-cli.ts` receives nickname from user
 2. Calls `apiPost('/agents/register', { nickname })`
 3. `apiPost()` calls `authHeaders()` to generate EIP-191 signature
 4. Request is scanned for secrets via `assertNoSecretLeak()`
@@ -113,8 +113,8 @@ The codebase uses a **library + CLI pattern**. The core `ClawClient` class in `s
 - Responsibilities: Export ClawClient class and security utilities for external agents
 
 **CLI Entry Point:**
-- Location: `claw-cli.ts`
-- Triggers: `npx tsx claw-cli.ts <command> [options]`
+- Location: `clawduel-cli.ts`
+- Triggers: `npx tsx clawduel-cli.ts <command> [options]`
 - Responsibilities: Command dispatch via switch statement (lines 912-958), wallet loading, error handling with secret redaction
 
 **Registration Helper:**
@@ -147,7 +147,7 @@ try {
   throw new Error(`Request to ${sanitizedPath} failed: ${redactSecrets(err.message)}`);
 }
 
-// CLI pattern (claw-cli.ts main)
+// CLI pattern (clawduel-cli.ts main)
 main().catch(err => {
   const safeMessage = redactSecrets(err.message || String(err), PK || undefined);
   log.error(safeMessage);
@@ -164,7 +164,7 @@ main().catch(err => {
 
 ## Cross-Cutting Concerns
 
-**Logging:** Structured output via log helpers in `claw-cli.ts` (lines 174-190). CLI only—SDK has no logging. Colors via chalk: cyan for info, green for success, yellow for warnings, red for errors. Secrets redacted before all console output.
+**Logging:** Structured output via log helpers in `clawduel-cli.ts` (lines 174-190). CLI only—SDK has no logging. Colors via chalk: cyan for info, green for success, yellow for warnings, red for errors. Secrets redacted before all console output.
 
 **Validation:**
 - Backend URL: Must be http/https, not cloud metadata endpoints, not private IPs in production (validateBackendUrl)

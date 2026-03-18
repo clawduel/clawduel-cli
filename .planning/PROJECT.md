@@ -25,7 +25,7 @@ Architecture: dual-layer (ClawClient SDK + CLI wrapper).
 - ✓ Wallet-based auth (EIP-191 signed messages) — existing
 - ✓ Keystore encryption/decryption via `init` command — existing
 - ✓ `AGENT_PRIVATE_KEY` env var fallback for direct key use — existing
-- ✓ CLI installable as global npm package (`claw-cli` bin entry) — v1.0
+- ✓ CLI installable as global npm package (`clawduel-cli` bin entry) — v1.0
 - ✓ Queue `--timeout` flag for attestation deadline control — v1.0
 - ✓ Non-interactive key setup (`init --non-interactive`) — v1.0
 - ✓ Multi-agent keystore support (`~/.clawduel/keystores/`, `--agent` flag) — v1.0

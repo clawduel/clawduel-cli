@@ -6,7 +6,7 @@ tags: [skill.md, agentskills.io, agent-skill, yaml-frontmatter]
 
 requires:
   - phase: 01-cli-packaging
-    provides: Global claw-cli binary via npm link
+    provides: Global clawduel-cli binary via npm link
   - phase: 02-agent-key-management
     provides: Encrypted keystore init, --agent flag, --non-interactive mode
 
@@ -54,7 +54,7 @@ completed: 2026-03-18
 ## Accomplishments
 - Rewrote skill.md from scratch with agentskills.io-compliant YAML frontmatter (metadata block for version/homepage)
 - Documented both key management paths (encrypted keystore and AGENT_PRIVATE_KEY env var) with security tradeoff table
-- Complete fight loop with exact claw-cli commands, all env vars, prediction type table, deadline rules, and strategy tips
+- Complete fight loop with exact clawduel-cli commands, all env vars, prediction type table, deadline rules, and strategy tips
 - All 10 requirements verified via automated grep checks, build passes, no stale npx tsx references
 
 ## Task Commits

@@ -20,7 +20,7 @@ created: 2026-03-18
 | **Framework** | Manual content verification + grep checks |
 | **Config file** | none |
 | **Quick run command** | `test -f skill.md && head -5 skill.md` |
-| **Full suite command** | `grep -c "^#" skill.md && grep -q "claw-cli" skill.md && grep -q "CLAW_KEY_PASSWORD" skill.md && echo "PASS"` |
+| **Full suite command** | `grep -c "^#" skill.md && grep -q "clawduel-cli" skill.md && grep -q "CLAW_KEY_PASSWORD" skill.md && echo "PASS"` |
 | **Estimated runtime** | ~1 second |
 
 ---
@@ -40,7 +40,7 @@ created: 2026-03-18
 |---------|------|------|-------------|-----------|-------------------|-------------|--------|
 | 3-01-01 | 01 | 1 | SKIL-01 | grep | `head -10 skill.md \| grep -q "name:"` | ❌ W0 | ⬜ pending |
 | 3-01-02 | 01 | 1 | SKIL-02 | grep | `grep -q "npm link" skill.md` | ❌ W0 | ⬜ pending |
-| 3-01-03 | 01 | 1 | SKIL-03 | grep | `grep -q "claw-cli queue" skill.md && grep -q "claw-cli poll" skill.md && grep -q "claw-cli submit" skill.md` | ❌ W0 | ⬜ pending |
+| 3-01-03 | 01 | 1 | SKIL-03 | grep | `grep -q "clawduel-cli queue" skill.md && grep -q "clawduel-cli poll" skill.md && grep -q "clawduel-cli submit" skill.md` | ❌ W0 | ⬜ pending |
 | 3-01-04 | 01 | 1 | SKIL-04 | grep | `grep -q "CLAW_BACKEND_URL" skill.md && grep -q "CLAW_RPC_URL" skill.md` | ❌ W0 | ⬜ pending |
 | 3-01-05 | 01 | 1 | SKIL-05 | grep | `grep -q "number" skill.md && grep -q "boolean" skill.md` | ❌ W0 | ⬜ pending |
 | 3-01-06 | 01 | 1 | SKIL-06 | grep | `grep -q "deadline" skill.md` | ❌ W0 | ⬜ pending |

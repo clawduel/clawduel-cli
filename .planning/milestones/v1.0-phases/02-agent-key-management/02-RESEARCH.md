@@ -17,7 +17,7 @@ This is a well-scoped refactor of existing patterns. The ethers.js APIs are alre
 
 | ID | Description | Research Support |
 |----|-------------|-----------------|
-| KEYS-01 | `claw-cli init --non-interactive` reads `AGENT_PRIVATE_KEY` and `CLAW_KEY_PASSWORD` from env vars to create keystore without prompts | ethers.js `Wallet.encrypt()` already used in `cmdInit()` (line 232); just need to skip `promptLine()` calls when `--non-interactive` flag is present and env vars are set |
+| KEYS-01 | `clawduel-cli init --non-interactive` reads `AGENT_PRIVATE_KEY` and `CLAW_KEY_PASSWORD` from env vars to create keystore without prompts | ethers.js `Wallet.encrypt()` already used in `cmdInit()` (line 232); just need to skip `promptLine()` calls when `--non-interactive` flag is present and env vars are set |
 | KEYS-02 | When `CLAW_KEY_PASSWORD` is set, keystore decryption is fully non-interactive across all commands | `loadWallet()` already reads `CLAW_KEY_PASSWORD` at line 252: `process.env.CLAW_KEY_PASSWORD \|\| await promptLine(...)` -- this already works for single keyfile, needs extension for keystores directory |
 | MAGT-01 | Keystores stored in `~/.clawduel/keystores/` directory, one file per agent named by address | New directory `~/.clawduel/keystores/`; files named `<address>.json` where address is lowercase hex without 0x prefix (matches ethers keystore format) or with 0x prefix for readability |
 | MAGT-02 | CLI accepts `--agent <address>` flag or `CLAW_AGENT_ADDRESS` env var to select which keystore | New flag parsing in `main()` before `loadWallet()` call; pass selected address to loadWallet |
@@ -34,7 +34,7 @@ This is a well-scoped refactor of existing patterns. The ethers.js APIs are alre
 ### Supporting
 | Library | Version | Purpose | When to Use |
 |---------|---------|---------|-------------|
-| fs (built-in) | Node.js | File I/O for keystores | Already imported in claw-cli.ts |
+| fs (built-in) | Node.js | File I/O for keystores | Already imported in clawduel-cli.ts |
 | path (built-in) | Node.js | Path construction | Already imported |
 | os (built-in) | Node.js | Home directory resolution | Already imported |
 
@@ -69,7 +69,7 @@ No new dependencies required. Everything needed is already in the project.
 **When to use:** AI agent automation, CI/CD, headless environments.
 **Example:**
 ```typescript
-// Source: existing cmdInit() pattern in claw-cli.ts lines 204-241
+// Source: existing cmdInit() pattern in clawduel-cli.ts lines 204-241
 async function cmdInit(args: string[]) {
   const nonInteractive = args.includes('--non-interactive');
 
@@ -121,7 +121,7 @@ async function cmdInit(args: string[]) {
 **When to use:** Every command that requires a wallet (all commands except `init` and `help`).
 **Example:**
 ```typescript
-// Source: derived from existing loadWallet() at claw-cli.ts lines 243-280
+// Source: derived from existing loadWallet() at clawduel-cli.ts lines 243-280
 const KEYSTORES_DIR = path.join(os.homedir(), '.clawduel', 'keystores');
 
 function discoverKeystores(): string[] {
@@ -243,7 +243,7 @@ const parsed = JSON.parse(encrypted);
 
 ### Verified: Wallet.fromEncryptedJson() Decryption
 ```typescript
-// Source: already in claw-cli.ts line 256
+// Source: already in clawduel-cli.ts line 256
 const encryptedJson = fs.readFileSync(keystorePath, 'utf-8');
 const decryptedWallet = await ethers.Wallet.fromEncryptedJson(encryptedJson, password);
 const connectedWallet = decryptedWallet.connect(provider);
@@ -296,17 +296,17 @@ const files = fs.readdirSync(KEYSTORES_DIR).filter(f => f.endsWith('.json'));
 |----------|-------|
 | Framework | Manual testing via CLI invocation |
 | Config file | none -- no test framework configured |
-| Quick run command | `npm run build && claw-cli help` |
+| Quick run command | `npm run build && clawduel-cli help` |
 | Full suite command | `npm run build` (build success is the gate) |
 
 ### Phase Requirements to Test Map
 | Req ID | Behavior | Test Type | Automated Command | File Exists? |
 |--------|----------|-----------|-------------------|-------------|
-| KEYS-01 | `init --non-interactive` creates keystore from env vars | smoke | `AGENT_PRIVATE_KEY=0x$(openssl rand -hex 32) CLAW_KEY_PASSWORD=test claw-cli init --non-interactive && ls ~/.clawduel/keystores/` | N/A (manual) |
-| KEYS-02 | `CLAW_KEY_PASSWORD` enables non-interactive decryption | smoke | `CLAW_KEY_PASSWORD=test claw-cli balance` (should not prompt) | N/A (manual) |
+| KEYS-01 | `init --non-interactive` creates keystore from env vars | smoke | `AGENT_PRIVATE_KEY=0x$(openssl rand -hex 32) CLAW_KEY_PASSWORD=test clawduel-cli init --non-interactive && ls ~/.clawduel/keystores/` | N/A (manual) |
+| KEYS-02 | `CLAW_KEY_PASSWORD` enables non-interactive decryption | smoke | `CLAW_KEY_PASSWORD=test clawduel-cli balance` (should not prompt) | N/A (manual) |
 | MAGT-01 | Keystores stored in `~/.clawduel/keystores/` named by address | smoke | `ls ~/.clawduel/keystores/*.json` after init | N/A (manual) |
-| MAGT-02 | `--agent <address>` selects keystore | smoke | `claw-cli balance --agent 0x...` | N/A (manual) |
-| MAGT-03 | Auto-select when only one keystore exists | smoke | Remove all but one keystore, run `claw-cli balance` without --agent | N/A (manual) |
+| MAGT-02 | `--agent <address>` selects keystore | smoke | `clawduel-cli balance --agent 0x...` | N/A (manual) |
+| MAGT-03 | Auto-select when only one keystore exists | smoke | Remove all but one keystore, run `clawduel-cli balance` without --agent | N/A (manual) |
 
 ### Sampling Rate
 - **Per task commit:** `npm run build` must succeed
@@ -321,7 +321,7 @@ const files = fs.readdirSync(KEYSTORES_DIR).filter(f => f.endsWith('.json'));
 ## Sources
 
 ### Primary (HIGH confidence)
-- **Project source code** (`claw-cli.ts` lines 204-280): Existing init and loadWallet implementation
+- **Project source code** (`clawduel-cli.ts` lines 204-280): Existing init and loadWallet implementation
 - **ethers.js v6.16.0** (verified locally): `Wallet.encrypt()`, `Wallet.fromEncryptedJson()` API confirmed working
 - **Encrypted keystore format** (verified locally): `{ address: "hex_no_0x", id: "uuid", version: 3, Crypto: {...} }`
 

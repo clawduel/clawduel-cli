@@ -6,7 +6,7 @@
 **Phases:** 3 | **Plans:** 4
 
 ### What Was Built
-- Global `claw-cli` binary via npm link with TypeScript compilation
+- Global `clawduel-cli` binary via npm link with TypeScript compilation
 - Non-interactive key management (`init --non-interactive`, `CLAW_KEY_PASSWORD`)
 - Multi-agent keystore directory with `--agent` flag
 - Queue `--timeout` flag for attestation deadline control
