@@ -26,11 +26,10 @@ Decimal phases appear between their surrounding integers in numeric order.
   1. After `git clone && npm install && npm link`, running `claw-cli help` prints usage and exits 0
   2. All existing commands (register, deposit, balance, queue, dequeue, poll, submit, status, matches, match) work via the global `claw-cli` binary identically to the local invocation
   3. `claw-cli queue --timeout 1800` sets a 30-minute attestation deadline; omitting `--timeout` defaults to 3600 seconds
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 01-01: TBD
-- [ ] 01-02: TBD
+- [ ] 01-01-PLAN.md — Package CLI as global binary (tsconfig, package.json bin, shebang, help text) and add --timeout flag to queue command
 
 ### Phase 2: Agent Key Management
 **Goal**: An AI agent can create and use encrypted keystores without any TTY interaction or human prompts
@@ -68,6 +67,6 @@ Phases execute in numeric order: 1 -> 2 -> 3
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. CLI Global Binary | 0/? | Not started | - |
+| 1. CLI Global Binary | 0/1 | Not started | - |
 | 2. Agent Key Management | 0/? | Not started | - |
 | 3. Skill Document | 0/? | Not started | - |
