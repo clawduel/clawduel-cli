@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-stopped_at: Completed 02-01-PLAN.md
-last_updated: "2026-03-18T18:19:38.200Z"
+stopped_at: Completed 02-02-PLAN.md
+last_updated: "2026-03-18T18:23:08.160Z"
 progress:
   total_phases: 3
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 3
-  completed_plans: 2
+  completed_plans: 3
 ---
 
 # Project State
@@ -48,6 +48,7 @@ Plan: 2 of 2
 *Updated after each plan completion*
 | Phase 01 P01 | 2min | 2 tasks | 3 files |
 | Phase 02 P01 | 1min | 2 tasks | 1 files |
+| Phase 02 P02 | 2min | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -61,6 +62,8 @@ Recent decisions affecting current work:
 - [Phase 01]: rootDir changed from ./src to . to include claw-cli.ts in compilation; SDK paths adjusted to dist/src/
 - [Phase 01]: Added prepare script for npm link build automation
 - [Phase 02]: Keystore filename uses lowercase address with 0x prefix for human readability
+- [Phase 02]: Keystore discovery checks keystores dir before legacy keyfile.json for backward compat
+- [Phase 02]: args.splice removes --agent from args to prevent command handler confusion
 
 ### Pending Todos
 
@@ -72,6 +75,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-18T18:19:38.198Z
-Stopped at: Completed 02-01-PLAN.md
+Last session: 2026-03-18T18:23:08.159Z
+Stopped at: Completed 02-02-PLAN.md
 Resume file: None
