@@ -260,21 +260,84 @@ async function cmdInit(args: string[]) {
   console.log(JSON.stringify({ ok: true, address: tempWallet.address, keystore: keystorePath }));
 }
 
-async function loadWallet(): Promise<{ wallet: ethers.Wallet; privateKey: string }> {
+function discoverKeystores(): string[] {
+  if (!fs.existsSync(KEYSTORES_DIR)) return [];
+  return fs.readdirSync(KEYSTORES_DIR)
+    .filter(f => f.endsWith('.json'))
+    .map(f => path.join(KEYSTORES_DIR, f));
+}
+
+function selectKeystore(agentAddress?: string): string | null {
+  const keystores = discoverKeystores();
+
+  if (keystores.length === 0) {
+    return null; // No keystores found, fall through to legacy paths
+  }
+
+  if (agentAddress) {
+    // MAGT-02: Explicit selection by address
+    const normalized = agentAddress.toLowerCase().replace(/^0x/, '');
+    const match = keystores.find(k => {
+      const base = path.basename(k, '.json').toLowerCase().replace(/^0x/, '');
+      return base === normalized;
+    });
+    if (!match) {
+      log.error(`No keystore found for agent ${agentAddress}`);
+      log.dim('Available keystores:');
+      for (const k of keystores) {
+        log.dim(`  ${path.basename(k, '.json')}`);
+      }
+      process.exit(1);
+    }
+    return match;
+  }
+
+  if (keystores.length === 1) {
+    // MAGT-03: Auto-select when only one exists
+    return keystores[0];
+  }
+
+  // Multiple keystores, no --agent specified
+  log.error('Multiple keystores found. Specify which agent to use:');
+  for (const k of keystores) {
+    log.dim(`  --agent ${path.basename(k, '.json')}`);
+  }
+  log.dim('Or set CLAW_AGENT_ADDRESS env var');
+  process.exit(1);
+}
+
+async function loadWallet(agentAddress?: string): Promise<{ wallet: ethers.Wallet; privateKey: string }> {
   const BACKEND = process.env.CLAW_BACKEND_URL || 'http://localhost:3001';
   const RPC = process.env.CLAW_RPC_URL || 'http://localhost:8545';
   validateBackendUrl(BACKEND);
-  const provider = new ethers.JsonRpcProvider(RPC);
+  const prov = new ethers.JsonRpcProvider(RPC);
 
-  // Try keyfile first
+  // Try keystores directory first (KEYS-02, MAGT-01, MAGT-02, MAGT-03)
+  const keystorePath = selectKeystore(agentAddress);
+  if (keystorePath) {
+    log.dim('Found keystore at ' + keystorePath);
+    const password = process.env.CLAW_KEY_PASSWORD || await promptLine('Enter keystore password: ');
+    try {
+      log.info('Decrypting keystore...');
+      const encryptedJson = fs.readFileSync(keystorePath, 'utf-8');
+      const decryptedWallet = await ethers.Wallet.fromEncryptedJson(encryptedJson, password);
+      const connectedWallet = decryptedWallet.connect(prov);
+      return { wallet: connectedWallet as ethers.Wallet, privateKey: decryptedWallet.privateKey };
+    } catch {
+      log.error('Failed to decrypt keystore. Wrong password?');
+      process.exit(1);
+    }
+  }
+
+  // Fallback: legacy keyfile.json (preserves backward compatibility)
   if (fs.existsSync(KEYFILE_PATH)) {
-    log.dim('Found keyfile at ' + KEYFILE_PATH);
+    log.dim('Found legacy keyfile at ' + KEYFILE_PATH);
     const password = process.env.CLAW_KEY_PASSWORD || await promptLine('Enter keyfile password: ');
     try {
       log.info('Decrypting keyfile...');
       const encryptedJson = fs.readFileSync(KEYFILE_PATH, 'utf-8');
       const decryptedWallet = await ethers.Wallet.fromEncryptedJson(encryptedJson, password);
-      const connectedWallet = decryptedWallet.connect(provider);
+      const connectedWallet = decryptedWallet.connect(prov);
       return { wallet: connectedWallet as ethers.Wallet, privateKey: decryptedWallet.privateKey };
     } catch {
       log.error('Failed to decrypt keyfile. Wrong password?');
@@ -282,18 +345,18 @@ async function loadWallet(): Promise<{ wallet: ethers.Wallet; privateKey: string
     }
   }
 
-  // Fallback to env var
+  // Fallback: env var
   const pk = process.env.AGENT_PRIVATE_KEY;
   if (pk) {
-    log.dim('Using AGENT_PRIVATE_KEY from environment (keyfile preferred)');
-    const w = new ethers.Wallet(pk, provider);
+    log.dim('Using AGENT_PRIVATE_KEY from environment (keystore preferred)');
+    const w = new ethers.Wallet(pk, prov);
     return { wallet: w, privateKey: pk };
   }
 
-  // Neither available
+  // Nothing available
   console.log(BANNER);
-  log.error('No keyfile or AGENT_PRIVATE_KEY found.');
-  log.dim('Run `claw-cli init` to set up your encrypted keyfile.');
+  log.error('No keystore, keyfile, or AGENT_PRIVATE_KEY found.');
+  log.dim('Run `claw-cli init` to set up your encrypted keystore.');
   log.dim('Or set AGENT_PRIVATE_KEY as a fallback.');
   console.log('');
   process.exit(1);
@@ -913,7 +976,19 @@ async function main() {
 
   // All other commands require a wallet
   validateBackendUrl(BACKEND);
-  const loaded = await loadWallet();
+
+  // Parse --agent flag (global, before command dispatch)
+  const agentIdx = args.indexOf('--agent');
+  const agentAddress = (agentIdx !== -1 && agentIdx + 1 < args.length)
+    ? args[agentIdx + 1]
+    : process.env.CLAW_AGENT_ADDRESS;
+
+  // Remove --agent and its value from args so command handlers don't see them
+  if (agentIdx !== -1) {
+    args.splice(agentIdx, 2);
+  }
+
+  const loaded = await loadWallet(agentAddress);
   wallet = loaded.wallet;
   PK = loaded.privateKey;
   PRIVATE_KEY_FOR_REDACTION = PK;
