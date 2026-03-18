@@ -193,6 +193,7 @@ const log = {
 
 const KEYFILE_DIR = path.join(os.homedir(), '.clawduel');
 const KEYFILE_PATH = process.env.CLAW_KEYFILE || path.join(KEYFILE_DIR, 'keyfile.json');
+const KEYSTORES_DIR = path.join(os.homedir(), '.clawduel', 'keystores');
 
 function promptLine(question: string): Promise<string> {
   const rl = readline.createInterface({ input: process.stdin, output: process.stderr });
@@ -201,16 +202,38 @@ function promptLine(question: string): Promise<string> {
   });
 }
 
-async function cmdInit() {
+async function cmdInit(args: string[]) {
+  const nonInteractive = args.includes('--non-interactive');
+
   console.log(BANNER);
   log.info('Setting up encrypted keyfile...');
-  log.dim(`Keyfile will be saved to ${KEYFILE_PATH}`);
   console.log('');
 
-  const privateKey = process.env.AGENT_PRIVATE_KEY || await promptLine('Paste your private key: ');
-  if (!privateKey.trim()) {
-    log.error('No private key provided. Aborting.');
-    process.exit(1);
+  let privateKey: string;
+  let password: string;
+
+  if (nonInteractive) {
+    privateKey = process.env.AGENT_PRIVATE_KEY || '';
+    password = process.env.CLAW_KEY_PASSWORD || '';
+    if (!privateKey) {
+      log.error('AGENT_PRIVATE_KEY env var required for --non-interactive mode');
+      process.exit(1);
+    }
+    if (!password) {
+      log.error('CLAW_KEY_PASSWORD env var required for --non-interactive mode');
+      process.exit(1);
+    }
+  } else {
+    privateKey = process.env.AGENT_PRIVATE_KEY || await promptLine('Paste your private key: ');
+    if (!privateKey.trim()) {
+      log.error('No private key provided. Aborting.');
+      process.exit(1);
+    }
+    password = await promptLine('Enter encryption password (will not be hidden): ');
+    if (!password) {
+      log.error('No password provided. Aborting.');
+      process.exit(1);
+    }
   }
 
   // Validate the key by creating a wallet
@@ -222,22 +245,19 @@ async function cmdInit() {
     process.exit(1);
   }
 
-  const password = await promptLine('Enter encryption password (will not be hidden): ');
-  if (!password) {
-    log.error('No password provided. Aborting.');
-    process.exit(1);
-  }
-
   log.info('Encrypting keyfile (this may take a moment)...');
   const encrypted = await tempWallet.encrypt(password);
 
-  fs.mkdirSync(KEYFILE_DIR, { recursive: true });
-  fs.writeFileSync(KEYFILE_PATH, encrypted, { mode: 0o600 });
+  // Write to keystores directory (MAGT-01)
+  fs.mkdirSync(KEYSTORES_DIR, { recursive: true, mode: 0o700 });
+  const filename = `${tempWallet.address.toLowerCase()}.json`;
+  const keystorePath = path.join(KEYSTORES_DIR, filename);
+  fs.writeFileSync(keystorePath, encrypted, { mode: 0o600 });
 
-  log.success('Keyfile saved to ' + KEYFILE_PATH);
+  log.success('Keystore saved to ' + keystorePath);
   log.field('Address', tempWallet.address);
   console.log('');
-  console.log(JSON.stringify({ ok: true, address: tempWallet.address, keyfile: KEYFILE_PATH }));
+  console.log(JSON.stringify({ ok: true, address: tempWallet.address, keystore: keystorePath }));
 }
 
 async function loadWallet(): Promise<{ wallet: ethers.Wallet; privateKey: string }> {
@@ -882,7 +902,7 @@ async function main() {
 
   // Commands that don't require a wallet
   if (cmd === 'init') {
-    await cmdInit();
+    await cmdInit(args);
     return;
   }
   if (cmd === 'help' || cmd === '--help' || cmd === '-h' || !cmd) {
