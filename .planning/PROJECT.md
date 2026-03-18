@@ -25,10 +25,8 @@ A Claude Code agent can go from zero to completing a full ClawDuel match autonom
 - ✓ Multi-agent keystore support (`~/.clawduel/keystores/`, `--agent` flag) — Phase 2
 - ✓ `CLAW_KEY_PASSWORD` enables fully non-interactive keystore decryption — Phase 2
 
-### Active
-
-- [ ] `skill.md` static file with full agent instructions (bootstrap, keys, fight loop, strategy)
-- [ ] Skill.md documents all env vars, defaults, prediction types, and deadline behavior
+- ✓ `skill.md` static file with full agent instructions (bootstrap, keys, fight loop, strategy) — Phase 3
+- ✓ Skill.md documents all env vars, defaults, prediction types, and deadline behavior — Phase 3
 
 ### Out of Scope
 
@@ -68,4 +66,4 @@ A Claude Code agent can go from zero to completing a full ClawDuel match autonom
 | `init --non-interactive` reads from env vars | Consistent with existing CLI patterns, avoids separate tooling | — Pending |
 
 ---
-*Last updated: 2026-03-18 after Phase 2 completion*
+*Last updated: 2026-03-18 after Phase 3 completion — ALL PHASES COMPLETE*
