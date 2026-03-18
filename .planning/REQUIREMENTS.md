@@ -16,9 +16,9 @@
 
 - [x] **KEYS-01**: `claw-cli init --non-interactive` reads `AGENT_PRIVATE_KEY` and `CLAW_KEY_PASSWORD` from env vars to create keystore without prompts
 - [x] **KEYS-02**: When `CLAW_KEY_PASSWORD` is set, keystore decryption is fully non-interactive across all commands (no TTY prompt)
-- [ ] **KEYS-03**: skill.md documents programmatic keystore creation flow using ethers.js `Wallet.encrypt()`
-- [ ] **KEYS-04**: skill.md documents direct `AGENT_PRIVATE_KEY` env var path as alternative
-- [ ] **KEYS-05**: skill.md explains security tradeoff between encrypted-at-rest keystore and plaintext env var
+- [x] **KEYS-03**: skill.md documents programmatic keystore creation flow using ethers.js `Wallet.encrypt()`
+- [x] **KEYS-04**: skill.md documents direct `AGENT_PRIVATE_KEY` env var path as alternative
+- [x] **KEYS-05**: skill.md explains security tradeoff between encrypted-at-rest keystore and plaintext env var
 
 ### Multi-Agent Keystores
 
@@ -33,13 +33,13 @@
 
 ### Skill.md
 
-- [ ] **SKIL-01**: `skill.md` has valid YAML frontmatter (name, version, description, homepage)
-- [ ] **SKIL-02**: skill.md includes bootstrap instructions (clone, install, npm link, fallback for permission errors)
-- [ ] **SKIL-03**: skill.md includes complete fight loop with exact CLI commands per step
-- [ ] **SKIL-04**: skill.md documents all env vars with defaults (prod: clawduel.ai, local: localhost)
-- [ ] **SKIL-05**: skill.md documents prediction type rules (number, boolean, string, text) with expected formats
-- [ ] **SKIL-06**: skill.md documents deadline behavior (absolute, no revisions, no-submit = loss)
-- [ ] **SKIL-07**: skill.md includes strategy tips and research guidance
+- [x] **SKIL-01**: `skill.md` has valid YAML frontmatter (name, version, description, homepage)
+- [x] **SKIL-02**: skill.md includes bootstrap instructions (clone, install, npm link, fallback for permission errors)
+- [x] **SKIL-03**: skill.md includes complete fight loop with exact CLI commands per step
+- [x] **SKIL-04**: skill.md documents all env vars with defaults (prod: clawduel.ai, local: localhost)
+- [x] **SKIL-05**: skill.md documents prediction type rules (number, boolean, string, text) with expected formats
+- [x] **SKIL-06**: skill.md documents deadline behavior (absolute, no revisions, no-submit = loss)
+- [x] **SKIL-07**: skill.md includes strategy tips and research guidance
 
 ## v2 Requirements
 
@@ -75,21 +75,21 @@
 | CLIP-04 | Phase 1 | Complete |
 | KEYS-01 | Phase 2 | Complete |
 | KEYS-02 | Phase 2 | Complete |
-| KEYS-03 | Phase 3 | Pending |
-| KEYS-04 | Phase 3 | Pending |
-| KEYS-05 | Phase 3 | Pending |
+| KEYS-03 | Phase 3 | Complete |
+| KEYS-04 | Phase 3 | Complete |
+| KEYS-05 | Phase 3 | Complete |
 | MAGT-01 | Phase 2 | Complete |
 | MAGT-02 | Phase 2 | Complete |
 | MAGT-03 | Phase 2 | Complete |
 | QUES-01 | Phase 1 | Complete |
 | QUES-02 | Phase 1 | Complete |
-| SKIL-01 | Phase 3 | Pending |
-| SKIL-02 | Phase 3 | Pending |
-| SKIL-03 | Phase 3 | Pending |
-| SKIL-04 | Phase 3 | Pending |
-| SKIL-05 | Phase 3 | Pending |
-| SKIL-06 | Phase 3 | Pending |
-| SKIL-07 | Phase 3 | Pending |
+| SKIL-01 | Phase 3 | Complete |
+| SKIL-02 | Phase 3 | Complete |
+| SKIL-03 | Phase 3 | Complete |
+| SKIL-04 | Phase 3 | Complete |
+| SKIL-05 | Phase 3 | Complete |
+| SKIL-06 | Phase 3 | Complete |
+| SKIL-07 | Phase 3 | Complete |
 
 **Coverage:**
 - v1 requirements: 21 total

@@ -14,7 +14,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [ ] **Phase 1: CLI Global Binary** - Package CLI as installable global command with queue timeout support
 - [ ] **Phase 2: Agent Key Management** - Non-interactive keystore creation and multi-agent keystore selection
-- [ ] **Phase 3: Skill Document** - Author skill.md with bootstrap, fight loop, key setup docs, and strategy guidance
+- [x] **Phase 3: Skill Document** - Author skill.md with bootstrap, fight loop, key setup docs, and strategy guidance (completed 2026-03-18)
 
 ## Phase Details
 
@@ -69,4 +69,4 @@ Phases execute in numeric order: 1 -> 2 -> 3
 |-------|----------------|--------|-----------|
 | 1. CLI Global Binary | 1/1 | Complete | 2026-03-18 |
 | 2. Agent Key Management | 0/2 | Not started | - |
-| 3. Skill Document | 0/1 | Not started | - |
+| 3. Skill Document | 1/1 | Complete   | 2026-03-18 |
