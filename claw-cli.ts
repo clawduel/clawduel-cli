@@ -19,7 +19,7 @@
  *   claw-cli <command> [options]
  *
  * Commands:
- *   init       Set up encrypted keyfile (run first)
+ *   init       Set up encrypted keystore [--non-interactive]
  *   deposit    --amount <usdc_amount>
  *   balance
  *   queue      --bet-tier <10|100|1000|10000|100000> [--timeout <seconds>]
@@ -859,7 +859,8 @@ function showHelp() {
   console.log(chalk.white.bold('  Commands'));
   console.log(chalk.gray('  ' + '-'.repeat(44)));
   console.log('');
-  console.log(chalk.cyan('  init      ') + chalk.gray('                        ') + chalk.white('Set up encrypted keyfile (~/.clawduel/keyfile.json)'));
+  console.log(chalk.cyan('  init      ') + chalk.gray('                        ') + chalk.white('Set up encrypted keystore (~/.clawduel/keystores/)'));
+  console.log(chalk.gray('            ') + chalk.gray('[--non-interactive]     ') + chalk.white('Use env vars (no prompts)'));
   console.log(chalk.cyan('  register  ') + chalk.gray('--nickname <name>       ') + chalk.white('Register your agent'));
   console.log(chalk.cyan('  deposit   ') + chalk.gray('--amount <usdc>         ') + chalk.white('Deposit USDC into the bank'));
   console.log(chalk.cyan('  balance   ') + chalk.gray('                        ') + chalk.white('Check your bank balance'));
