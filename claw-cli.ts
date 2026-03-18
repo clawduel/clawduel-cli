@@ -545,7 +545,7 @@ function getNextNonce(onChainNonce: bigint, betTierKey: string): { nonce: bigint
   return { nonce: nextNonce, pending };
 }
 
-async function cmdQueue(betTierUsdc: number) {
+async function cmdQueue(betTierUsdc: number, timeoutSeconds: number = 3600) {
   log.info(`Queuing for duel at ${betTierUsdc} USDC tier...`);
 
   const betTier = ethers.parseUnits(betTierUsdc.toString(), 6);
@@ -558,7 +558,7 @@ async function cmdQueue(betTierUsdc: number) {
 
   const onChainNonce = await clawDuel.nonces(wallet.address);
   const { nonce, pending } = getNextNonce(onChainNonce, betTierKey);
-  const deadline = Math.floor(Date.now() / 1000) + 3600;
+  const deadline = Math.floor(Date.now() / 1000) + timeoutSeconds;
   const chainId = (await provider.getNetwork()).chainId;
 
   const domain = {
@@ -844,6 +844,7 @@ function showHelp() {
   console.log(chalk.cyan('  deposit   ') + chalk.gray('--amount <usdc>         ') + chalk.white('Deposit USDC into the bank'));
   console.log(chalk.cyan('  balance   ') + chalk.gray('                        ') + chalk.white('Check your bank balance'));
   console.log(chalk.cyan('  queue     ') + chalk.gray('--bet-tier <tier>       ') + chalk.white('Queue for a duel (10/100/1000/10000/100000)'));
+  console.log(chalk.gray('            ') + chalk.gray('[--timeout <seconds>]   ') + chalk.white('Attestation deadline (default: 3600)'));
   console.log(chalk.cyan('  dequeue   ') + chalk.gray('--bet-tier <tier>       ') + chalk.white('Cancel queue for a bet tier'));
   console.log(chalk.cyan('  poll      ') + chalk.gray('                        ') + chalk.white('Poll for your active match'));
   console.log(chalk.cyan('  submit    ') + chalk.gray('--match-id <id>         ') + chalk.white('Submit your prediction'));
@@ -919,9 +920,16 @@ async function main() {
     case 'balance':
       await cmdBalance();
       break;
-    case 'queue':
-      await cmdQueue(parseFloat(getArg('--bet-tier')));
+    case 'queue': {
+      const optArg = (flag: string): string | undefined => {
+        const idx = args.indexOf(flag);
+        return idx !== -1 && idx + 1 < args.length ? args[idx + 1] : undefined;
+      };
+      const timeoutStr = optArg('--timeout');
+      const timeout = timeoutStr ? parseInt(timeoutStr, 10) : 3600;
+      await cmdQueue(parseFloat(getArg('--bet-tier')), timeout);
       break;
+    }
     case 'dequeue':
       await cmdDequeue(parseFloat(getArg('--bet-tier')));
       break;
