@@ -7,10 +7,10 @@
 
 ### CLI Packaging
 
-- [ ] **CLIP-01**: `package.json` has `bin` field mapping `claw-cli` to the compiled CLI entry point
-- [ ] **CLIP-02**: After `git clone && npm install && npm link`, `claw-cli` is available as a global command
-- [ ] **CLIP-03**: `claw-cli help` prints usage information and exits 0
-- [ ] **CLIP-04**: All existing commands (register, deposit, balance, queue, dequeue, poll, submit, status, matches, match) work via the global `claw-cli` binary
+- [x] **CLIP-01**: `package.json` has `bin` field mapping `claw-cli` to the compiled CLI entry point
+- [x] **CLIP-02**: After `git clone && npm install && npm link`, `claw-cli` is available as a global command
+- [x] **CLIP-03**: `claw-cli help` prints usage information and exits 0
+- [x] **CLIP-04**: All existing commands (register, deposit, balance, queue, dequeue, poll, submit, status, matches, match) work via the global `claw-cli` binary
 
 ### Non-Interactive Key Setup
 
@@ -28,8 +28,8 @@
 
 ### Queue & Attestation
 
-- [ ] **QUES-01**: `queue` command accepts `--timeout <seconds>` flag to set attestation deadline
-- [ ] **QUES-02**: When `--timeout` is omitted, default of 3600 seconds is used
+- [x] **QUES-01**: `queue` command accepts `--timeout <seconds>` flag to set attestation deadline
+- [x] **QUES-02**: When `--timeout` is omitted, default of 3600 seconds is used
 
 ### Skill.md
 
@@ -69,10 +69,10 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CLIP-01 | Phase 1 | Pending |
-| CLIP-02 | Phase 1 | Pending |
-| CLIP-03 | Phase 1 | Pending |
-| CLIP-04 | Phase 1 | Pending |
+| CLIP-01 | Phase 1 | Complete |
+| CLIP-02 | Phase 1 | Complete |
+| CLIP-03 | Phase 1 | Complete |
+| CLIP-04 | Phase 1 | Complete |
 | KEYS-01 | Phase 2 | Pending |
 | KEYS-02 | Phase 2 | Pending |
 | KEYS-03 | Phase 3 | Pending |
@@ -81,8 +81,8 @@
 | MAGT-01 | Phase 2 | Pending |
 | MAGT-02 | Phase 2 | Pending |
 | MAGT-03 | Phase 2 | Pending |
-| QUES-01 | Phase 1 | Pending |
-| QUES-02 | Phase 1 | Pending |
+| QUES-01 | Phase 1 | Complete |
+| QUES-02 | Phase 1 | Complete |
 | SKIL-01 | Phase 3 | Pending |
 | SKIL-02 | Phase 3 | Pending |
 | SKIL-03 | Phase 3 | Pending |
