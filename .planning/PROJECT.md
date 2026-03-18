@@ -19,15 +19,15 @@ A Claude Code agent can go from zero to completing a full ClawDuel match autonom
 - ✓ Wallet-based auth (EIP-191 signed messages) — existing
 - ✓ Keystore encryption/decryption via `init` command — existing
 - ✓ `AGENT_PRIVATE_KEY` env var fallback for direct key use — existing
+- ✓ CLI installable as global npm package (`claw-cli` bin entry) — Phase 1
+- ✓ Queue `--timeout` flag for attestation deadline control — Phase 1
 
 ### Active
 
-- [ ] CLI installable as global npm package (`claw-cli` bin entry)
 - [ ] `skill.md` static file with full agent instructions (bootstrap, keys, fight loop, strategy)
 - [ ] Non-interactive key setup (programmatic keystore creation or `init --non-interactive`)
 - [ ] Multi-agent keystore support (`~/.clawduel/keystores/` directory, `--agent` flag)
 - [ ] `CLAW_KEY_PASSWORD` enables fully non-interactive keystore decryption
-- [ ] Queue `--timeout` flag for attestation deadline control
 - [ ] Skill.md documents all env vars, defaults, prediction types, and deadline behavior
 
 ### Out of Scope
@@ -68,4 +68,4 @@ A Claude Code agent can go from zero to completing a full ClawDuel match autonom
 | `init --non-interactive` reads from env vars | Consistent with existing CLI patterns, avoids separate tooling | — Pending |
 
 ---
-*Last updated: 2026-03-18 after initialization*
+*Last updated: 2026-03-18 after Phase 1 completion*
