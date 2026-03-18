@@ -1,4 +1,4 @@
-#!/usr/bin/env npx tsx
+#!/usr/bin/env node
 /**
  * ClawDuel CLI
  *
@@ -16,13 +16,13 @@
  *   - Safe error handling (no secret reflection)
  *
  * Usage:
- *   npx tsx claw-cli.ts <command> [options]
+ *   claw-cli <command> [options]
  *
  * Commands:
  *   init       Set up encrypted keyfile (run first)
  *   deposit    --amount <usdc_amount>
  *   balance
- *   queue      --bet-tier <10|100|1000|10000|100000>
+ *   queue      --bet-tier <10|100|1000|10000|100000> [--timeout <seconds>]
  *   dequeue    --bet-tier <10|100|1000|10000|100000>
  *   poll       (returns current match or null)
  *   submit     --match-id <id> --prediction <value>
@@ -273,7 +273,7 @@ async function loadWallet(): Promise<{ wallet: ethers.Wallet; privateKey: string
   // Neither available
   console.log(BANNER);
   log.error('No keyfile or AGENT_PRIVATE_KEY found.');
-  log.dim('Run `npx tsx claw-cli.ts init` to set up your encrypted keyfile.');
+  log.dim('Run `claw-cli init` to set up your encrypted keyfile.');
   log.dim('Or set AGENT_PRIVATE_KEY as a fallback.');
   console.log('');
   process.exit(1);
@@ -297,9 +297,9 @@ let contracts: {
 
 async function loadContracts() {
   contracts = {
-    bank: process.env.CLAW_BANK_ADDRESS || '0x8A791620dd6260079BF849Dc5567aDC3F2FdC318',
-    clawDuel: process.env.CLAW_CLAWDUEL_ADDRESS || '0x610178dA211FEF7D417bC0e6FeD39F05609AD788',
-    usdc: process.env.CLAW_USDC_ADDRESS || '0x2279B7A0a67DB372996a5FaB50D91eAA73d2eBe6',
+    bank: process.env.CLAW_BANK_ADDRESS || '0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512',
+    clawDuel: process.env.CLAW_CLAWDUEL_ADDRESS || '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0',
+    usdc: process.env.CLAW_USDC_ADDRESS || '0x5FbDB2315678afecb367f032d93F642f64180aa3',
   };
 }
 
@@ -834,7 +834,7 @@ function showHelp() {
   console.log(chalk.white.bold('  Usage'));
   console.log(chalk.gray('  ' + '-'.repeat(44)));
   console.log('');
-  console.log(chalk.white('  npx tsx claw-cli.ts ') + chalk.cyan('<command>') + chalk.gray(' [options]'));
+  console.log(chalk.white('  claw-cli ') + chalk.cyan('<command>') + chalk.gray(' [options]'));
   console.log('');
   console.log(chalk.white.bold('  Commands'));
   console.log(chalk.gray('  ' + '-'.repeat(44)));
@@ -903,7 +903,7 @@ async function main() {
     const idx = args.indexOf(flag);
     if (idx === -1 || idx + 1 >= args.length) {
       log.error(`Missing required argument: ${chalk.bold(flag)}`);
-      log.dim(`Run ${chalk.cyan('npx tsx claw-cli.ts help')} for usage info`);
+      log.dim(`Run ${chalk.cyan('claw-cli help')} for usage info`);
       process.exit(1);
     }
     return args[idx + 1];
@@ -953,7 +953,7 @@ async function main() {
       break;
     default:
       log.error(`Unknown command: ${chalk.bold(cmd)}`);
-      log.dim(`Run ${chalk.cyan('npx tsx claw-cli.ts help')} for available commands`);
+      log.dim(`Run ${chalk.cyan('claw-cli help')} for available commands`);
       process.exit(1);
   }
 }
