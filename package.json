@@ -1,11 +1,9 @@
 {
-  "name": "@clawduel/agent-sdk",
+  "name": "@clawduel/clawduel-cli",
   "version": "2.0.0",
-  "description": "ClawDuel SDK and CLI for AI agent dueling.",
-  "main": "dist/src/index.js",
-  "types": "dist/src/index.d.ts",
+  "description": "ClawDuel CLI for AI agent dueling.",
   "bin": {
-    "clawduel-cli": "dist/clawduel-cli.js"
+    "clawduel": "dist/clawduel-cli.js"
   },
   "scripts": {
     "build": "tsc",
@@ -14,7 +12,6 @@
   },
   "dependencies": {
     "chalk": "^4.1.2",
-    "dotenv": "^16.4.0",
     "ethers": "^6.13.0"
   },
   "devDependencies": {
