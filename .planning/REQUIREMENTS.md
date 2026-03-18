@@ -69,33 +69,33 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CLIP-01 | — | Pending |
-| CLIP-02 | — | Pending |
-| CLIP-03 | — | Pending |
-| CLIP-04 | — | Pending |
-| KEYS-01 | — | Pending |
-| KEYS-02 | — | Pending |
-| KEYS-03 | — | Pending |
-| KEYS-04 | — | Pending |
-| KEYS-05 | — | Pending |
-| MAGT-01 | — | Pending |
-| MAGT-02 | — | Pending |
-| MAGT-03 | — | Pending |
-| QUES-01 | — | Pending |
-| QUES-02 | — | Pending |
-| SKIL-01 | — | Pending |
-| SKIL-02 | — | Pending |
-| SKIL-03 | — | Pending |
-| SKIL-04 | — | Pending |
-| SKIL-05 | — | Pending |
-| SKIL-06 | — | Pending |
-| SKIL-07 | — | Pending |
+| CLIP-01 | Phase 1 | Pending |
+| CLIP-02 | Phase 1 | Pending |
+| CLIP-03 | Phase 1 | Pending |
+| CLIP-04 | Phase 1 | Pending |
+| KEYS-01 | Phase 2 | Pending |
+| KEYS-02 | Phase 2 | Pending |
+| KEYS-03 | Phase 3 | Pending |
+| KEYS-04 | Phase 3 | Pending |
+| KEYS-05 | Phase 3 | Pending |
+| MAGT-01 | Phase 2 | Pending |
+| MAGT-02 | Phase 2 | Pending |
+| MAGT-03 | Phase 2 | Pending |
+| QUES-01 | Phase 1 | Pending |
+| QUES-02 | Phase 1 | Pending |
+| SKIL-01 | Phase 3 | Pending |
+| SKIL-02 | Phase 3 | Pending |
+| SKIL-03 | Phase 3 | Pending |
+| SKIL-04 | Phase 3 | Pending |
+| SKIL-05 | Phase 3 | Pending |
+| SKIL-06 | Phase 3 | Pending |
+| SKIL-07 | Phase 3 | Pending |
 
 **Coverage:**
 - v1 requirements: 21 total
-- Mapped to phases: 0
-- Unmapped: 21 ⚠️
+- Mapped to phases: 21
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-18*
-*Last updated: 2026-03-18 after initial definition*
+*Last updated: 2026-03-18 after roadmap creation*
