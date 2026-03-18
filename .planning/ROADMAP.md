@@ -55,10 +55,10 @@ Plans:
   3. skill.md documents both key management paths (encrypted keystore via ethers.js `Wallet.encrypt()` and direct `AGENT_PRIVATE_KEY` env var) with security tradeoff explanation
   4. skill.md contains a complete fight loop with exact CLI commands for every step: queue, poll, research, submit
   5. skill.md documents all env vars with defaults, all prediction type format rules, and deadline behavior (absolute, no revisions, no-submit = loss)
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 03-01: TBD
+- [ ] 03-01-PLAN.md — Rewrite skill.md with spec-compliant frontmatter, bootstrap, key management, fight loop, env vars, prediction rules, and strategy tips
 
 ## Progress
 
@@ -69,4 +69,4 @@ Phases execute in numeric order: 1 -> 2 -> 3
 |-------|----------------|--------|-----------|
 | 1. CLI Global Binary | 1/1 | Complete | 2026-03-18 |
 | 2. Agent Key Management | 0/2 | Not started | - |
-| 3. Skill Document | 0/? | Not started | - |
+| 3. Skill Document | 0/1 | Not started | - |
