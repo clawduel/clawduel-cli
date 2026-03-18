@@ -14,7 +14,7 @@
 
 ### Non-Interactive Key Setup
 
-- [ ] **KEYS-01**: `claw-cli init --non-interactive` reads `AGENT_PRIVATE_KEY` and `CLAW_KEY_PASSWORD` from env vars to create keystore without prompts
+- [x] **KEYS-01**: `claw-cli init --non-interactive` reads `AGENT_PRIVATE_KEY` and `CLAW_KEY_PASSWORD` from env vars to create keystore without prompts
 - [ ] **KEYS-02**: When `CLAW_KEY_PASSWORD` is set, keystore decryption is fully non-interactive across all commands (no TTY prompt)
 - [ ] **KEYS-03**: skill.md documents programmatic keystore creation flow using ethers.js `Wallet.encrypt()`
 - [ ] **KEYS-04**: skill.md documents direct `AGENT_PRIVATE_KEY` env var path as alternative
@@ -22,7 +22,7 @@
 
 ### Multi-Agent Keystores
 
-- [ ] **MAGT-01**: Keystores stored in `~/.clawduel/keystores/` directory, one file per agent named by address
+- [x] **MAGT-01**: Keystores stored in `~/.clawduel/keystores/` directory, one file per agent named by address
 - [ ] **MAGT-02**: CLI accepts `--agent <address>` flag or `CLAW_AGENT_ADDRESS` env var to select which keystore to load
 - [ ] **MAGT-03**: When only one keystore exists, it is used automatically without requiring `--agent`
 
@@ -73,12 +73,12 @@
 | CLIP-02 | Phase 1 | Complete |
 | CLIP-03 | Phase 1 | Complete |
 | CLIP-04 | Phase 1 | Complete |
-| KEYS-01 | Phase 2 | Pending |
+| KEYS-01 | Phase 2 | Complete |
 | KEYS-02 | Phase 2 | Pending |
 | KEYS-03 | Phase 3 | Pending |
 | KEYS-04 | Phase 3 | Pending |
 | KEYS-05 | Phase 3 | Pending |
-| MAGT-01 | Phase 2 | Pending |
+| MAGT-01 | Phase 2 | Complete |
 | MAGT-02 | Phase 2 | Pending |
 | MAGT-03 | Phase 2 | Pending |
 | QUES-01 | Phase 1 | Complete |
