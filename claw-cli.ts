@@ -297,9 +297,9 @@ let contracts: {
 
 async function loadContracts() {
   contracts = {
-    bank: process.env.CLAW_BANK_ADDRESS || '0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512',
-    clawDuel: process.env.CLAW_CLAWDUEL_ADDRESS || '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0',
-    usdc: process.env.CLAW_USDC_ADDRESS || '0x5FbDB2315678afecb367f032d93F642f64180aa3',
+    bank: process.env.CLAW_BANK_ADDRESS || '0x8A791620dd6260079BF849Dc5567aDC3F2FdC318',
+    clawDuel: process.env.CLAW_CLAWDUEL_ADDRESS || '0x610178dA211FEF7D417bC0e6FeD39F05609AD788',
+    usdc: process.env.CLAW_USDC_ADDRESS || '0x2279B7A0a67DB372996a5FaB50D91eAA73d2eBe6',
   };
 }
 
@@ -356,11 +356,13 @@ async function apiPost(path: string, body: any, method: string = 'POST'): Promis
 }
 
 async function apiGet(path: string): Promise<any> {
+  const headers = await authHeaders();
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
   try {
     const res = await fetch(`${BACKEND}${path}`, {
+      headers,
       signal: controller.signal,
     });
 
@@ -476,17 +478,86 @@ async function cmdBalance() {
   console.log(JSON.stringify(data));
 }
 
+// --- Nonce Tracking ---
+
+/**
+ * Tracks pending attestation nonces per bet tier to avoid nonce replay.
+ * Each tier gets its own nonce so re-queuing for the same tier reuses
+ * the same nonce (the queue replaces duplicate entries per tier).
+ * File: ~/.clawduel/pending_nonces.json
+ */
+const PENDING_NONCES_PATH = path.join(KEYFILE_DIR, 'pending_nonces.json');
+
+interface PendingNonces {
+  /** Maps betTier string -> nonce string used for that tier's pending attestation */
+  tiers: Record<string, string>;
+}
+
+function loadPendingNonces(): PendingNonces {
+  try {
+    if (fs.existsSync(PENDING_NONCES_PATH)) {
+      return JSON.parse(fs.readFileSync(PENDING_NONCES_PATH, 'utf-8'));
+    }
+  } catch { /* ignore corrupt file */ }
+  return { tiers: {} };
+}
+
+function savePendingNonces(data: PendingNonces): void {
+  fs.mkdirSync(KEYFILE_DIR, { recursive: true });
+  fs.writeFileSync(PENDING_NONCES_PATH, JSON.stringify(data), { mode: 0o600 });
+}
+
+/**
+ * Returns the next available nonce for a new attestation.
+ * - Reads on-chain nonce as the floor.
+ * - Checks pending nonces already assigned to other tiers.
+ * - If this tier already has a pending nonce >= on-chain, reuses it
+ *   (the queue replaces same-tier entries, so same nonce is fine).
+ * - Otherwise picks max(onChain, highest_pending + 1).
+ */
+function getNextNonce(onChainNonce: bigint, betTierKey: string): { nonce: bigint; pending: PendingNonces } {
+  const pending = loadPendingNonces();
+
+  // Prune nonces that the chain has already consumed
+  for (const [tier, nonceStr] of Object.entries(pending.tiers)) {
+    if (BigInt(nonceStr) < onChainNonce) {
+      delete pending.tiers[tier];
+    }
+  }
+
+  // If this tier already has a pending nonce, reuse it (same-tier re-queue)
+  if (pending.tiers[betTierKey] !== undefined) {
+    const existing = BigInt(pending.tiers[betTierKey]);
+    if (existing >= onChainNonce) {
+      return { nonce: existing, pending };
+    }
+  }
+
+  // Find the highest pending nonce across all tiers
+  let highest = onChainNonce - BigInt(1);
+  for (const nonceStr of Object.values(pending.tiers)) {
+    const n = BigInt(nonceStr);
+    if (n > highest) highest = n;
+  }
+
+  const nextNonce = highest + BigInt(1);
+  pending.tiers[betTierKey] = nextNonce.toString();
+  return { nonce: nextNonce, pending };
+}
+
 async function cmdQueue(betTierUsdc: number) {
   log.info(`Queuing for duel at ${betTierUsdc} USDC tier...`);
 
   const betTier = ethers.parseUnits(betTierUsdc.toString(), 6);
+  const betTierKey = betTier.toString();
 
   // Sign EIP-712 attestation
   const clawDuel = new ethers.Contract(contracts.clawDuel, [
     'function nonces(address) external view returns (uint256)',
   ], provider);
 
-  const nonce = await clawDuel.nonces(wallet.address);
+  const onChainNonce = await clawDuel.nonces(wallet.address);
+  const { nonce, pending } = getNextNonce(onChainNonce, betTierKey);
   const deadline = Math.floor(Date.now() / 1000) + 3600;
   const chainId = (await provider.getNetwork()).chainId;
 
@@ -517,6 +588,8 @@ async function cmdQueue(betTierUsdc: number) {
   });
 
   if (status >= 200 && status < 300) {
+    // Persist the pending nonce only on successful queue
+    savePendingNonces(pending);
     log.success('Queued for duel');
   } else {
     log.error(`Queue failed (${status}): ${body?.error || 'Unknown error'}`);
@@ -535,6 +608,10 @@ async function cmdDequeue(betTierUsdc: number) {
   }, 'DELETE');
 
   if (status >= 200 && status < 300) {
+    // Remove pending nonce for this tier
+    const pending = loadPendingNonces();
+    delete pending.tiers[betTier.toString()];
+    savePendingNonces(pending);
     log.success('Removed from queue');
   } else {
     log.error(`Dequeue failed (${status}): ${body?.error || 'Unknown error'}`);
@@ -555,12 +632,32 @@ async function cmdPoll() {
     const { status, body } = await apiPost(url.pathname, {});
     if (status >= 200 && status < 300) {
       log.success('Ready signal sent');
-      log.info('Waiting for opponent...');
+      if (body?.startsAt) {
+        const waitMs = new Date(body.startsAt).getTime() - Date.now();
+        if (waitMs > 0) {
+          log.info(`Match starts in ${Math.ceil(waitMs / 1000)}s, waiting...`);
+          await new Promise(r => setTimeout(r, waitMs));
+        }
+      } else {
+        log.info('Waiting for opponent...');
+      }
     } else {
       log.warn(`Ready acknowledgement failed (${status}): ${body?.error || 'Unknown error'}`);
     }
 
     // Re-poll to get updated state
+    const updatedData = await apiGet(`/matches/active/${safeAddress}`);
+    console.log(JSON.stringify(updatedData));
+    return;
+  }
+
+  // Both agents ready, waiting for synchronized start
+  if (data?.match && data.match.status === 'waiting_start' && data.match.startsAt) {
+    const waitMs = new Date(data.match.startsAt).getTime() - Date.now();
+    if (waitMs > 0) {
+      log.info(`Match starts in ${Math.ceil(waitMs / 1000)}s, waiting...`);
+      await new Promise(r => setTimeout(r, waitMs));
+    }
     const updatedData = await apiGet(`/matches/active/${safeAddress}`);
     console.log(JSON.stringify(updatedData));
     return;
