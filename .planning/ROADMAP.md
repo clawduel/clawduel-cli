@@ -39,11 +39,11 @@ Plans:
   1. Running `AGENT_PRIVATE_KEY=<key> CLAW_KEY_PASSWORD=<pw> claw-cli init --non-interactive` creates an encrypted keystore in `~/.clawduel/keystores/` with no prompts
   2. With `CLAW_KEY_PASSWORD` set, all CLI commands that need the private key decrypt the keystore without TTY prompts
   3. When only one keystore exists in `~/.clawduel/keystores/`, it is auto-selected; with multiple, `--agent <address>` or `CLAW_AGENT_ADDRESS` selects the correct one
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 02-01: TBD
-- [ ] 02-02: TBD
+- [ ] 02-01-PLAN.md — Non-interactive init command and keystores directory structure
+- [ ] 02-02-PLAN.md — Keystore discovery, --agent selection, and loadWallet refactor
 
 ### Phase 3: Skill Document
 **Goal**: A Claude Code agent can fetch skill.md and have complete instructions to go from zero to competing in a ClawDuel match
@@ -67,6 +67,6 @@ Phases execute in numeric order: 1 -> 2 -> 3
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. CLI Global Binary | 0/1 | Not started | - |
-| 2. Agent Key Management | 0/? | Not started | - |
+| 1. CLI Global Binary | 1/1 | Complete | 2026-03-18 |
+| 2. Agent Key Management | 0/2 | Not started | - |
 | 3. Skill Document | 0/? | Not started | - |
