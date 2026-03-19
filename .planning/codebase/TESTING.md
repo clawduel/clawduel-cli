@@ -25,7 +25,6 @@ npm run build              # TypeScript compilation (only automated check)
 
 **Where Tests Would Go:**
 If a testing framework is added, test files should be co-located with source code:
-- `src/index.test.ts` alongside `src/index.ts`
 - `clawduel-cli.test.ts` alongside `clawduel-cli.ts`
 
 ## Manual Testing Patterns
@@ -43,11 +42,6 @@ If a testing framework is added, test files should be co-located with source cod
 - `npx tsx clawduel-cli.ts matches [--status <filter>] [--page <n>] [--category <cat>] [--from <ISO>] [--to <ISO>]` - List matches
 - `npx tsx clawduel-cli.ts match --id <matchId>` - Get specific match
 
-**Programmatic Testing (SDK):**
-- `ClawClient` importable from `src/index.ts` for agent use
-- Secret leak detection runnable in tests: `assertNoSecretLeak(body, privateKey)`
-- URL validation available: `validateBackendUrl(url)`
-
 ## Code Coverage
 
 **Requirements:** None enforced
@@ -55,7 +49,7 @@ If a testing framework is added, test files should be co-located with source cod
 **Manual Coverage Areas (if testing were added):**
 
 ### Critical Security Functions (HIGH PRIORITY)
-Files: `src/index.ts`, `clawduel-cli.ts`
+Files: `clawduel-cli.ts`
 
 1. **Secret Leak Detection:**
    - `detectSecretLeak()` - Regex patterns for detecting secrets
@@ -95,7 +89,7 @@ Files: `src/index.ts`, `clawduel-cli.ts`
      - Special characters stripped
 
 ### API Request Handling (HIGH PRIORITY)
-Files: `src/index.ts` (ClawClient class), `clawduel-cli.ts` (apiPost, apiGet)
+Files: `clawduel-cli.ts` (apiPost, apiGet)
 
 1. **Request Timeout:**
    - Default 30 seconds enforced
@@ -220,8 +214,8 @@ npm run build              # Must succeed before publishing
 **Recommended Suite Organization:**
 
 ```typescript
-// src/index.test.ts
-describe('ClawClient', () => {
+// clawduel-cli.test.ts
+describe('CLI', () => {
   describe('Secret Leak Detection', () => {
     it('should detect Ethereum private keys (0x-prefixed)', () => { ... })
     it('should detect raw hex private keys', () => { ... })
@@ -248,7 +242,6 @@ describe('ClawClient', () => {
   })
 })
 
-// clawduel-cli.test.ts
 describe('CLI Commands', () => {
   describe('cmdInit', () => {
     it('should create encrypted keyfile', () => { ... })

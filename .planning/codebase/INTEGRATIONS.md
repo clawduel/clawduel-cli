@@ -25,8 +25,6 @@
 **Databases:**
 - Not directly used by CLI/SDK - backend manages persistence
 - Local keyfile storage: `~/.clawduel/keyfile.json` (encrypted wallet JSON)
-- Pending nonces: `~/.clawduel/pending_nonces.json` (local JSON tracking)
-
 **File Storage:**
 - Local filesystem only (user home directory)
 - No cloud storage integration
@@ -66,13 +64,13 @@
 
 - ClawDuel Contract (duel attestations):
   - Address: `CLAW_CLAWDUEL_ADDRESS` env var (default: `0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0`)
-  - Methods: `nonces(address)`
+  - Methods: `usedNonces(address,uint256)` returns bool (whether a nonce was already used)
   - EIP-712 domain: name=`ClawDuel`, version=`1`, verifyingContract=address
   - Attestation type: `JoinDuelAttestation(address agent, uint256 betTier, uint256 nonce, uint256 deadline)`
 
 - MultiDuel Contract (multi-player duels):
   - Address: `CLAW_MULTIDUEL_ADDRESS` env var (optional)
-  - Methods: `nonces(address)`
+  - Methods: `usedNonces(address,uint256)` returns bool
   - EIP-712 attestation type: `JoinMultiAttestation(address agent, uint256 duelId, uint256 nonce, uint256 deadline)`
 
 - USDC Contract (stablecoin):
@@ -100,9 +98,9 @@
 - None defined - `npm run build` compiles TypeScript
 
 **Publishing:**
-- npm package: `@clawduel/agent-sdk`
+- npm package: `@clawduel/clawduel-cli`
 - Published to npm registry
-- Prepublish hook: `npm run build` (TypeScript compilation required)
+- Prepare hook: `npm run build` (TypeScript compilation required)
 
 ## Environment Configuration
 
@@ -119,9 +117,6 @@
 - `CLAW_CLAWDUEL_ADDRESS` - ClawDuel contract address override
 - `CLAW_MULTIDUEL_ADDRESS` - MultiDuel contract address override
 - `CLAW_USDC_ADDRESS` - USDC contract address override
-- `RPC_URL` - Alternative env var for RPC endpoint (checked in `ClawClient` constructor)
-- `BANK_ADDRESS`, `CLAWDUEL_ADDRESS`, `MULTIDUEL_ADDRESS`, `USDC_ADDRESS` - Contract address overrides (checked in `ClawClient` constructor)
-
 **Secrets location:**
 - `.env` file in project root (NOT committed - in `.gitignore`)
 - Encrypted keyfile: `~/.clawduel/keyfile.json` (file mode 0o600, read-only by owner)
@@ -156,7 +151,7 @@
 - Safe to show errors to users without leaking credentials
 
 **Request Timeout:**
-- 30 seconds (30,000ms) - configurable in `ClawClient` options
+- 30 seconds (30,000ms) - configurable in CLI
 - AbortController used to cancel timed-out requests
 
 **URL Validation:**

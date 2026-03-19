@@ -9,19 +9,8 @@
 - **Files:** `clawduel-cli.ts`
 - **Impact:**
   - Hard to test individual features (no unit tests possible without mocking global state)
-  - Difficult to reuse components between CLI and SDK
-  - Code duplication between `clawduel-cli.ts` and `src/index.ts` (secret detection, URL validation, auth headers)
   - Future maintenance burden as feature count grows
 - **Fix approach:** Extract command handlers into separate modules (`commands/`, `lib/` directories), create shared utilities module
-
-### Code Duplication Between CLI and SDK
-- **Issue:** Secret leak detection, URL validation, redaction, and auth header logic are duplicated across `clawduel-cli.ts` and `src/index.ts`
-- **Files:** `clawduel-cli.ts` (lines 45-114), `src/index.ts` (lines 7-132)
-- **Impact:**
-  - Bug fixes must be applied in two places
-  - Secret pattern additions require dual updates
-  - Risk of divergence between CLI and SDK security guarantees
-- **Fix approach:** Extract shared security utilities to `src/security.ts`, export from `src/index.ts`, import in both CLI and SDK
 
 ### Global Mutable State
 - **Issue:** Global variables `PK`, `provider`, `wallet`, `contracts` are initialized lazily and modified during execution
@@ -31,15 +20,6 @@
   - State is shared across commands in ways that aren't obvious
   - No clear contract for when these are available
 - **Fix approach:** Create a `Session` class that encapsulates these initialization details, pass it to commands
-
-### Silent JSON Parse Failure in Nonce Tracking
-- **Issue:** `loadPendingNonces()` silently ignores corrupt files with empty catch block
-- **Files:** `clawduel-cli.ts` (lines 496-502)
-- **Impact:**
-  - Operator doesn't know if nonce file is corrupted
-  - Could lead to nonce reuse if file gets corrupted between queue and submission
-  - No logging, no error visibility
-- **Fix approach:** Log warnings when JSON parse fails, add diagnostic mode to inspect/repair nonce files
 
 ### Hardcoded Contract Addresses
 - **Issue:** Default contract addresses are hardcoded as fallback when env vars not set
@@ -80,17 +60,9 @@
 - **Workaround:** Repolling after ready signal usually catches updated state
 - **Fix approach:** Add explicit state machine tracking (waiting_ready → polling_for_problem → waiting_start)
 
-### Nonce Tracking Doesn't Survive Unsigned Submissions
-- **Issue:** Pending nonce is only saved after successful queue; if signature is rejected, nonce is lost but next queue increments it
-- **Files:** `clawduel-cli.ts` (lines 548-599, 518-546)
-- **Impact:**
-  - Operator queues, signature fails at backend, then requeues with different nonce (wastes on-chain nonce)
-  - No way to recover if backend says "invalid signature" but CLI doesn't know why
-- **Fix approach:** Save pending nonce immediately after signing (before sending), not after success
-
 ### JSON Response Parsing Assumes Valid JSON
 - **Issue:** `await res.json()` is called without try-catch, will throw if response isn't valid JSON
-- **Files:** `clawduel-cli.ts` (lines 340, 369), `src/index.ts` (lines 229, 263)
+- **Files:** `clawduel-cli.ts` (lines 340, 369)
 - **Impact:**
   - If backend returns HTML error (e.g., 500 with stack trace), JSON parse fails with unclear error
   - Network timeout or 502 response could leave uncaught promise rejection
@@ -110,7 +82,7 @@
 
 ### Private Key Exposure in Error Stacks
 - **Risk:** Uncaught errors in async chains could expose private key in stack trace
-- **Files:** `clawduel-cli.ts` (lines 961-967), `src/index.ts` (lines 237-244)
+- **Files:** `clawduel-cli.ts` (lines 961-967)
 - **Current mitigation:** Top-level catch redacts errors before logging, but only message is redacted
 - **Recommendations:**
   - Also redact stack traces in error objects
@@ -134,7 +106,7 @@
 
 ### Backend URL SSRF Protection Incomplete
 - **Risk:** Validation allows localhost for development but doesn't warn when production URL is localhost
-- **Files:** `clawduel-cli.ts` (lines 118-134), `src/index.ts` (lines 76-107)
+- **Files:** `clawduel-cli.ts` (lines 118-134)
 - **Current mitigation:** Blocks 169.254.169.254 (AWS metadata), rejects non-HTTP(S)
 - **Recommendations:**
   - Add warning if BACKEND is localhost or 127.0.0.1 in production mode
@@ -142,7 +114,7 @@
 
 ### Auth Header Signature Not Scoped to Request
 - **Risk:** Signature is only on address + timestamp, not on request method/body/path
-- **Files:** `clawduel-cli.ts` (lines 313-320), `src/index.ts` (lines 281-291)
+- **Files:** `clawduel-cli.ts` (lines 313-320)
 - **Current mitigation:** Backend presumably validates message format and checks against request context
 - **Recommendations:**
   - Include request path in signed message for DELETE operations (to distinguish from POST)
@@ -150,19 +122,13 @@
 
 ### Secret Pattern Detection Has False Negatives
 - **Risk:** 64-char hex patterns could match non-secret data (contract ABIs, transaction hashes, etc.)
-- **Files:** `clawduel-cli.ts` (lines 50-58), `src/index.ts` (lines 13-26)
+- **Files:** `clawduel-cli.ts` (lines 50-58)
 - **Current mitigation:** Patterns require boundary chars (not surrounded by hex chars), exact key match
 - **Recommendations:**
   - Add configuration mode to disable pattern checking if too aggressive
   - Log what triggered pattern match (for debugging)
 
 ## Performance Bottlenecks
-
-### Synchronous File I/O on Hot Path
-- **Issue:** `loadPendingNonces()` does synchronous JSON parse for every queue operation
-- **Files:** `clawduel-cli.ts` (lines 496-507)
-- **Impact:** Negligible for single agent, but if CLI is used in automated loops, blocks main thread
-- **Improvement path:** Cache nonce state in memory after first load, only persist on success
 
 ### Poll Loop Timing Not Optimized
 - **Issue:** `cmdPoll()` waits using `setTimeout`, which is coarse-grained and doesn't account for request processing time
@@ -178,19 +144,10 @@
 
 ## Fragile Areas
 
-### Nonce Management System
-- **Files:** `clawduel-cli.ts` (lines 481-546)
-- **Why fragile:**
-  - Relies on local JSON file to track pending nonces across invocations
-  - No distributed lock mechanism (two agents with same key could corrupt file)
-  - File can be deleted/corrupted without agent knowing
-  - Per-tier nonce reuse logic is complex and could have off-by-one errors
-- **Safe modification:**
-  - Add comprehensive tests (currently none exist)
-  - Add --show-nonces flag to inspect current state
-  - Add --reset-nonces flag to rebuild from on-chain state
-  - Lock file during read-modify-write cycle
-- **Test coverage:** None - nonce logic is untested
+### Nonce Generation
+- **Files:** `clawduel-cli.ts`
+- **Design:** Nonces are random 256-bit values checked against on-chain `usedNonces(address, uint256)`. This makes the system stateless -- no local file tracking, no distributed lock needed, no corruption risk. Collision probability is negligible for 256-bit random values.
+- **Test coverage:** None - generateNonce() collision resistance not tested
 
 ### Ready Acknowledgement Flow
 - **Files:** `clawduel-cli.ts` (lines 628-651)
@@ -220,14 +177,6 @@
 
 ## Scaling Limits
 
-### Single-Instance Nonce Tracking
-- **Current capacity:** Works reliably for single agent instance only
-- **Limit:** Breaks if agent runs on multiple machines with same key (nonce file corruption)
-- **Scaling path:**
-  - Add distributed lock (Redis, DynamoDB)
-  - Or track pending nonces on-chain
-  - Or require server to assign nonce (less secure)
-
 ### Request Timeout Fixed at 30 Seconds
 - **Current capacity:** 30s timeout suitable for typical queue/submit operations
 - **Limit:** May timeout on slow networks or overloaded backends
@@ -237,7 +186,7 @@
 
 ### Ethers.js v6 API Surface
 - **Risk:** Large API surface (contracts, signers, providers, utilities), any version bump could break functionality
-- **Files:** `clawduel-cli.ts` (lines 38, 219, 256, 426, etc.), `src/index.ts` (entire SDK)
+- **Files:** `clawduel-cli.ts`
 - **Impact:**
   - Breaking change in ethers v7 would require major rewrite
   - EIP-712 signing API is stable but wallet encryption API is less common
@@ -282,21 +231,12 @@
 
 ## Test Coverage Gaps
 
-### Nonce Management System
-- **What's not tested:**
-  - `getNextNonce()` function with various edge cases (empty file, pruning, reuse)
-  - Concurrent access (though CLI is single-threaded)
-  - File corruption recovery
-- **Files:** `clawduel-cli.ts` (lines 481-546)
-- **Risk:** Nonce reuse or skipping could silently corrupt match state
-- **Priority:** HIGH
-
 ### Secret Leak Detection
 - **What's not tested:**
   - All secret patterns against real examples
   - False positive rate (do contract ABIs trigger pattern?)
   - Exact key matching
-- **Files:** `clawduel-cli.ts` (lines 45-91), `src/index.ts` (lines 7-74)
+- **Files:** `clawduel-cli.ts` (lines 45-91)
 - **Risk:** Secrets leak or legitimate data gets blocked
 - **Priority:** HIGH
 
@@ -305,7 +245,7 @@
   - Invalid JSON responses
   - Network timeouts
   - Backend error messages with secrets
-- **Files:** `clawduel-cli.ts` (lines 323-385), `src/index.ts` (lines 211-278)
+- **Files:** `clawduel-cli.ts` (lines 323-385)
 - **Risk:** Unhandled exceptions or secret exposure in errors
 - **Priority:** MEDIUM
 

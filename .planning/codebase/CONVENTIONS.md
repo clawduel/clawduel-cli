@@ -7,7 +7,7 @@
 **Files:**
 - kebab-case with `.ts` extension
 - Examples: `clawduel-cli.ts`, `register-agent.ts`
-- Main SDK export: `src/index.ts`
+- Main entry: `clawduel-cli.ts`
 
 **Functions:**
 - camelCase
@@ -21,11 +21,11 @@
 
 **Constants:**
 - UPPER_SNAKE_CASE for module-level constants: `SECRET_PATTERNS`, `DEFAULT_REQUEST_TIMEOUT_MS`, `REQUEST_TIMEOUT_MS`, `MAX_TIMESTAMP_DRIFT_MS`, `KEYFILE_DIR`, `BACKEND`, `RPC`
-- UPPER_SNAKE_CASE for compiled constants: `BANNER`, `PRIVATE_KEY_FOR_REDACTION`, `PENDING_NONCES_PATH`
+- UPPER_SNAKE_CASE for compiled constants: `BANNER`, `PRIVATE_KEY_FOR_REDACTION`
 
 **Types/Interfaces:**
 - PascalCase
-- Examples: `ClientOptions`, `SecretLeakError`, `PendingNonces`
+- Examples: `SecretLeakError`
 - Custom error classes extend `Error` and set `this.name`
 
 ## Code Style
@@ -57,11 +57,6 @@
 
 **Examples:**
 ```typescript
-// src/index.ts
-import { ethers } from 'ethers';
-import chalk from 'chalk';
-import dotenv from 'dotenv';
-
 // clawduel-cli.ts
 import { ethers } from 'ethers';
 import chalk from 'chalk';
@@ -84,54 +79,6 @@ import * as readline from 'readline';
 - Response error messages redacted via `redactSecrets()` to prevent secret reflection
 - Timeout handling with explicit error message: `Request to ${path} timed out after ${timeout}ms`
 - Custom `SecretLeakError` class distinguishable from generic errors for proper handling
-
-**Examples from `src/index.ts`:**
-```typescript
-// Pattern 1: Secure request error handling with secret scanning
-async apiPost(path: string, body: unknown): Promise<{ status: number; body: any }> {
-  // Scan outgoing body for secrets BEFORE sending
-  assertNoSecretLeak(body, this.privateKey);
-
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), this.requestTimeoutMs);
-
-  try {
-    const res = await fetch(`${this.backendUrl}${sanitizedPath}`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(body),
-      signal: controller.signal,
-    });
-
-    const responseBody = await res.json();
-
-    // Redact any reflected secrets in error responses
-    if (res.status >= 400 && responseBody?.error) {
-      responseBody.error = redactSecrets(String(responseBody.error));
-    }
-
-    return { status: res.status, body: responseBody };
-  } catch (err: any) {
-    if (err.name === 'AbortError') {
-      throw new Error(`Request to ${sanitizedPath} timed out after ${this.requestTimeoutMs}ms`);
-    }
-    if (err instanceof SecretLeakError) {
-      throw err;
-    }
-    throw new Error(`Request to ${sanitizedPath} failed: ${redactSecrets(err.message || String(err))}`);
-  } finally {
-    clearTimeout(timeout);
-  }
-}
-
-// Pattern 2: Custom error class for security violations
-export class SecretLeakError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'SecretLeakError';
-  }
-}
-```
 
 **Examples from `clawduel-cli.ts`:**
 ```typescript
@@ -214,39 +161,8 @@ const log = {
 - TODO or FIXME when applicable
 
 **JSDoc/TSDoc:**
-- Used sparingly for public exports and class/interface documentation
-- Method-level docstrings for SDK consumers in `src/index.ts`
-- Example from `src/index.ts`:
-```typescript
-/**
- * Scans a string for embedded secrets. Returns the name of the first match found, or null.
- */
-function detectSecretLeak(data: string): string | null { ... }
-
-/**
- * Scans an object (to be JSON-serialized) for secrets. Throws if a secret is detected.
- * Also accepts the agent's own private key to do an exact-match check.
- */
-function assertNoSecretLeak(body: unknown, privateKey?: string): void { ... }
-
-/**
- * Custom error class for secret leak detection so callers can distinguish it.
- */
-export class SecretLeakError extends Error { ... }
-
-/**
- * ClawClient
- *
- * Handles on-chain interactions: deposits, balance queries, and EIP-712 attestation signing.
- * Used programmatically by agents that import the SDK directly.
- *
- * Includes built-in secret leak detection: all outgoing request bodies are scanned for
- * private keys, mnemonics, and other secrets before being sent to the backend.
- *
- * For CLI usage, run `npx tsx clawduel-cli.ts help` instead.
- */
-export class ClawClient { ... }
-```
+- Used sparingly for function documentation in `clawduel-cli.ts`
+- Comments for security-critical functions explaining their purpose
 
 ## Function Design
 
@@ -284,21 +200,11 @@ async function loadWallet(): Promise<{ wallet: ethers.Wallet; privateKey: string
 ## Module Design
 
 **Exports:**
-- `src/index.ts` exports public API for SDK consumers: class `ClawClient`, utility functions, error class
-- Security utilities exported for programmatic use: `assertNoSecretLeak`, `detectSecretLeak`, `redactSecrets`, `validateBackendUrl`, `sanitizePathSegment`, `SECRET_PATTERNS`, `DEFAULT_REQUEST_TIMEOUT_MS`
-- CLI in `clawduel-cli.ts` operates independently with `main()` entry point
-
-**Barrel Files:**
-- No barrel files (index.ts with re-exports from multiple modules)
-- Single SDK file (`src/index.ts`) or standalone CLI (`clawduel-cli.ts`)
+- CLI in `clawduel-cli.ts` is standalone with `main()` entry point
+- No module exports -- all logic self-contained in the CLI file
 
 **Module Patterns:**
 ```typescript
-// src/index.ts: Export class + utilities
-export class ClawClient { ... }
-export class SecretLeakError extends Error { ... }
-export { assertNoSecretLeak, detectSecretLeak, redactSecrets, validateBackendUrl, ... }
-
 // clawduel-cli.ts: Standalone with main()
 async function main() { ... }
 // Entry point at bottom
