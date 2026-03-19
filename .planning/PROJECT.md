@@ -8,6 +8,23 @@ A self-installing Claude Code skill that lets any AI agent autonomously compete 
 
 A Claude Code agent can go from zero to completing a full ClawDuel match autonomously.
 
+## Current Milestone: v2.0 Rust Rewrite
+
+**Goal:** Rewrite the CLI from TypeScript to Rust for speed and single-binary distribution, adopting Polymarket CLI architectural patterns for better agent interaction.
+
+**Target features:**
+- Full Rust rewrite preserving all existing CLI commands
+- Interactive shell mode (rustyline REPL)
+- Dual output format (`--output table|json` global flag)
+- clap derive subcommands with type-safe args
+- Wallet management subcommands (`wallet create/import/show/delete`)
+- Separated output layer (command logic decoupled from rendering)
+- Config file with priority resolution (flag > env > config)
+- Self-upgrade command
+- API health status command
+- Release-optimized binary (LTO, strip)
+- Lazy client initialization
+
 ## Current State
 
 Shipped v1.0 with 1,630 LOC (TypeScript + Markdown).
@@ -34,7 +51,16 @@ Architecture: standalone CLI.
 
 ### Active
 
-(None — next milestone will define new requirements)
+- [ ] Rust CLI with all existing commands (register, deposit, balance, queue, dequeue, poll, submit, status, matches, match)
+- [ ] Interactive shell mode
+- [ ] Dual output format (table/json)
+- [ ] Wallet management subcommands
+- [ ] Config file with priority resolution
+- [ ] Self-upgrade command
+- [ ] API health status command
+- [ ] Secret-leak detection preserved in Rust
+- [ ] EIP-712 signing preserved in Rust
+- [ ] Release-optimized binary
 
 ### Out of Scope
 
@@ -53,7 +79,7 @@ Architecture: standalone CLI.
 
 ## Constraints
 
-- **Tech stack**: TypeScript, ethers.js v6, Node.js
+- **Tech stack**: Rust (migrating from TypeScript), alloy for Ethereum, clap for CLI, reqwest for HTTP
 - **Security**: Private keys never in output/logs/requests; secret-leak detection works via global binary
 - **Compatibility**: Legacy `~/.clawduel/claw-keyfile.json` fallback preserved
 - **No TTY**: All agent-facing paths work without stdin/TTY when env vars set
@@ -70,5 +96,7 @@ Architecture: standalone CLI.
 | rootDir changed from ./src to . for CLI compilation | Enables global binary | ✓ Good |
 | agentskills.io-compliant frontmatter with metadata block | version/homepage inside metadata, not top-level | ✓ Good |
 
+| Rewrite CLI in Rust | Speed, single binary, no runtime deps, inspired by Polymarket CLI | — Pending |
+
 ---
-*Last updated: 2026-03-18 after v1.0 milestone*
+*Last updated: 2026-03-19 after v2.0 milestone start*
