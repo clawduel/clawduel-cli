@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Rust Rewrite
 status: executing
-stopped_at: Completed 04-01-PLAN.md
-last_updated: "2026-03-19T22:15:00.000Z"
+stopped_at: Completed 04-02-PLAN.md
+last_updated: "2026-03-19T22:26:18.000Z"
 progress:
   total_phases: 3
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 2
-  completed_plans: 1
+  completed_plans: 2
 ---
 
 # Project State
@@ -23,12 +23,12 @@ See: .planning/PROJECT.md (updated 2026-03-19)
 
 ## Current Position
 
-Phase: 4 of 6 (Foundation)
-Plan: 04-02 (next to execute)
-Status: Executing
-Last activity: 2026-03-19 — Completed 04-01 (scaffold + config + wallet)
+Phase: 4 of 6 (Foundation) -- COMPLETE
+Plan: All plans complete (04-01, 04-02)
+Status: Phase 4 complete, ready for Phase 5
+Last activity: 2026-03-19 -- Completed 04-02 (security + auth + HTTP client)
 
-Progress: [█████░░░░░] 50%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -41,6 +41,7 @@ Progress: [█████░░░░░] 50%
 | Phase | Plan | Duration | Tasks | Files |
 |-------|------|----------|-------|-------|
 | 04    | 01   | 9 min    | 2     | 9     |
+| 04    | 02   | 7 min    | 2     | 7     |
 
 ## Accumulated Context
 
@@ -58,6 +59,9 @@ Recent decisions affecting current work:
 - [04-01]: Used PrivateKeySigner type alias (not generic LocalSigner) for ergonomic wallet API
 - [04-01]: Added lib.rs re-export layer so integration tests can import modules directly
 - [04-01]: eth-keystore v0.5 (plan's v0.6 doesn't exist), rpassword v5 API (prompt_password_stderr)
+- [04-02]: Used LazyLock<Regex> statics for compiled patterns (no lookbehind in Rust regex)
+- [04-02]: HttpClient validates backend URL once at construction time
+- [04-02]: Raw hex redaction uses boundary-aware Captures since Rust regex lacks lookbehind
 
 ### Pending Todos
 
@@ -74,6 +78,6 @@ None yet.
 
 ## Session Continuity
 
-Last activity: 2026-03-19 - Completed 04-01-PLAN.md
-Stopped at: Completed 04-01-PLAN.md, ready to execute 04-02
+Last activity: 2026-03-19 - Completed 04-02-PLAN.md
+Stopped at: Completed 04-02-PLAN.md, Phase 4 complete, ready for Phase 5
 Resume file: None

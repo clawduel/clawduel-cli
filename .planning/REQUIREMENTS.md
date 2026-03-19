@@ -12,11 +12,11 @@ Requirements for v2.0 Rust rewrite. Each maps to roadmap phases.
 - [x] **CORE-01**: CLI compiles to single Rust binary with clap derive subcommands
 - [ ] **CORE-02**: User can run all existing commands: register, deposit, balance, queue, dequeue, poll, submit, status, matches, match
 - [ ] **CORE-03**: CLI performs EIP-712 attestation signing for queue entries using alloy
-- [ ] **CORE-04**: CLI performs EIP-191 auth header signing for backend requests
-- [ ] **CORE-05**: CLI detects and blocks secret leaks in all outgoing request bodies
-- [ ] **CORE-06**: CLI validates backend URLs against SSRF vectors
+- [x] **CORE-04**: CLI performs EIP-191 auth header signing for backend requests
+- [x] **CORE-05**: CLI detects and blocks secret leaks in all outgoing request bodies
+- [x] **CORE-06**: CLI validates backend URLs against SSRF vectors
 - [ ] **CORE-07**: CLI sanitizes prediction text before submission
-- [ ] **CORE-08**: CLI supports request timeouts on all HTTP calls
+- [x] **CORE-08**: CLI supports request timeouts on all HTTP calls
 
 ### Wallet Management
 
@@ -71,11 +71,11 @@ Deferred to future release. Tracked but not in current roadmap.
 | CORE-01 | Phase 4 | Complete (04-01) |
 | CORE-02 | Phase 5 | Pending |
 | CORE-03 | Phase 5 | Pending |
-| CORE-04 | Phase 4 | Pending |
-| CORE-05 | Phase 4 | Pending |
-| CORE-06 | Phase 4 | Pending |
+| CORE-04 | Phase 4 | Complete |
+| CORE-05 | Phase 4 | Complete |
+| CORE-06 | Phase 4 | Complete |
 | CORE-07 | Phase 5 | Pending |
-| CORE-08 | Phase 4 | Pending |
+| CORE-08 | Phase 4 | Complete |
 | WALLET-01 | Phase 4 | Complete (04-01) |
 | WALLET-02 | Phase 4 | Complete (04-01) |
 | WALLET-03 | Phase 4 | Complete (04-01) |
