@@ -3,7 +3,7 @@
 ## Milestones
 
 - ✅ **v1.0 Agent Skill** — Phases 1-3 (shipped 2026-03-18)
-- 🚧 **v2.0 Rust Rewrite** — Phases 4-6 (in progress)
+- 🚧 **v2.0 Rust Rewrite** — Phases 4-7 (in progress)
 
 ## Phases
 
@@ -21,6 +21,7 @@
 - [ ] **Phase 4: Foundation** - Rust binary scaffolding, config system, wallet management, HTTP client with auth and security
 - [ ] **Phase 5: Command Port** - Port all existing CLI commands with EIP-712 signing and input validation
 - [ ] **Phase 6: Output, Shell & Distribution** - Dual output format, interactive shell, status/upgrade commands, release optimization
+- [ ] **Phase 7: Cleanup & Docs** - Remove old TypeScript code, update .gitignore, README, and skill.md
 
 ## Phase Details
 
@@ -38,7 +39,7 @@
 
 Plans:
 - [x] 04-01-PLAN.md — Rust scaffold + config system + wallet management (CORE-01, WALLET-*, CONF-*)
-- [ ] 04-02-PLAN.md — Security module + auth + authenticated HTTP client (CORE-04, CORE-05, CORE-06, CORE-08)
+- [x] 04-02-PLAN.md — Security module + auth + authenticated HTTP client (CORE-04, CORE-05, CORE-06, CORE-08)
 
 ### Phase 5: Command Port
 **Goal**: User can execute every existing CLI command (register, deposit, balance, queue, dequeue, poll, submit, status, matches, match) in the Rust binary
@@ -67,15 +68,30 @@ Plans:
 Plans:
 - [ ] 06-01: TBD
 
+### Phase 7: Cleanup & Docs
+**Goal**: Remove old TypeScript code, update .gitignore for Rust, update README and skill.md to reflect the Rust CLI
+**Depends on**: Phase 6
+**Requirements**: CLEAN-01, CLEAN-02, CLEAN-03, CLEAN-04
+**Success Criteria** (what must be TRUE):
+  1. All old TypeScript files (clawduel-cli.ts, tsconfig.json, package.json, dist/, node_modules/) are removed
+  2. .gitignore is updated for Rust (target/, *.pdb, etc.) and removes Node entries
+  3. README reflects Rust CLI installation (cargo install / binary download), commands, and usage
+  4. skill.md is updated to reference the Rust binary instead of npm package
+**Plans**: TBD
+
+Plans:
+- [ ] 07-01: TBD
+
 ## Progress
 
-**Execution Order:** Phase 4 → Phase 5 → Phase 6
+**Execution Order:** Phase 4 → Phase 5 → Phase 6 → Phase 7
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 1. CLI Global Binary | v1.0 | 1/1 | Complete | 2026-03-18 |
 | 2. Agent Key Management | v1.0 | 2/2 | Complete | 2026-03-18 |
 | 3. Skill Document | v1.0 | 1/1 | Complete | 2026-03-18 |
-| 4. Foundation | v2.0 | 1/2 | In Progress | - |
+| 4. Foundation | v2.0 | 2/2 | Complete | 2026-03-19 |
 | 5. Command Port | v2.0 | 0/? | Not started | - |
 | 6. Output, Shell & Distribution | v2.0 | 0/? | Not started | - |
+| 7. Cleanup & Docs | v2.0 | 0/? | Not started | - |
