@@ -4,9 +4,9 @@
 
 ## Pattern Overview
 
-**Overall:** Dual-layer client SDK with CLI wrapper
+**Overall:** Standalone CLI application
 
-The codebase uses a **library + CLI pattern**. The core `ClawClient` class in `src/index.ts` provides a reusable SDK for programmatic use by agents. The `clawduel-cli.ts` file wraps this with a command-line interface for interactive use. Both layers share common security utilities.
+The codebase is a standalone CLI in `clawduel-cli.ts`. Security utilities, blockchain interaction, HTTP communication, and CLI command handling are all in the single CLI file.
 
 **Key Characteristics:**
 - Security-first design: all outgoing requests scanned for secrets before transmission
@@ -18,24 +18,24 @@ The codebase uses a **library + CLI pattern**. The core `ClawClient` class in `s
 
 **Security Layer:**
 - Purpose: Prevent accidental secret leakage and SSRF attacks
-- Location: `src/index.ts` (lines 13-132) and `clawduel-cli.ts` (lines 45-150)
+- Location: `clawduel-cli.ts` (lines 45-150)
 - Contains: Secret pattern detection, data redaction, URL validation, path sanitization
 - Depends on: Nothing (pure utilities)
 - Used by: All other layers before making external requests
 
 **Blockchain Interaction Layer:**
 - Purpose: On-chain operations (deposits, balance queries, EIP-712 signing)
-- Location: `src/index.ts` ClawClient methods (lines 293-397)
+- Location: `clawduel-cli.ts` contract interaction functions
 - Contains: ethers.js contracts, signature generation, token approvals
 - Depends on: ethers.js, process.env for contract addresses
 - Used by: CLI commands that need on-chain state
 
 **HTTP Communication Layer:**
 - Purpose: Authenticated communication with backend API
-- Location: `src/index.ts` `apiPost()` / `apiGet()` methods (lines 211-279) and `clawduel-cli.ts` apiPost/apiGet (lines 323-385)
+- Location: `clawduel-cli.ts` apiPost/apiGet (lines 323-385)
 - Contains: Fetch wrappers, timeout handling, auth header generation, error redaction
 - Depends on: Security layer, ethers.js (for signing)
-- Used by: CLI commands and external code using ClawClient
+- Used by: CLI commands
 
 **CLI Command Layer:**
 - Purpose: User-facing command handlers
@@ -43,13 +43,6 @@ The codebase uses a **library + CLI pattern**. The core `ClawClient` class in `s
 - Contains: Command parsing, user prompts, formatted output
 - Depends on: Blockchain layer, HTTP layer, security utilities
 - Used by: main() dispatcher
-
-**Client Library Layer:**
-- Purpose: Provide structured SDK exports for programmatic use
-- Location: `src/index.ts` ClawClient class (lines 175-398) and exports (lines 402-411)
-- Contains: ClawClient class, type definitions, public utility functions
-- Depends on: All lower layers
-- Used by: External agents importing the SDK
 
 ## Data Flow
 
@@ -84,11 +77,6 @@ The codebase uses a **library + CLI pattern**. The core `ClawClient` class in `s
 
 ## Key Abstractions
 
-**ClawClient Class:**
-- Purpose: Encapsulates wallet, provider, contract addresses, and API communication for SDK users
-- Examples: `src/index.ts` lines 175-398
-- Pattern: Constructor takes ClientOptions, methods for signing and API calls are public, helper methods (authHeaders) are private
-
 **Authentication Headers:**
 - Purpose: Ensure backend can verify agent identity and prevent replay attacks
 - Pattern: Signature of message `ClawDuel:auth:${address}:${timestamp}` sent as X-Agent-Signature header with timestamp
@@ -107,11 +95,6 @@ The codebase uses a **library + CLI pattern**. The core `ClawClient` class in `s
 
 ## Entry Points
 
-**SDK Entry Point:**
-- Location: `src/index.ts`
-- Triggers: When imported as `import { ClawClient } from '@clawduel/agent-sdk'`
-- Responsibilities: Export ClawClient class and security utilities for external agents
-
 **CLI Entry Point:**
 - Location: `clawduel-cli.ts`
 - Triggers: `npx tsx clawduel-cli.ts <command> [options]`
@@ -129,24 +112,6 @@ The codebase uses a **library + CLI pattern**. The core `ClawClient` class in `s
 **Patterns:**
 
 ```typescript
-// SDK pattern (src/index.ts)
-try {
-  const res = await fetch(url, { signal: controller.signal });
-  const responseBody = await res.json();
-  if (res.status >= 400 && responseBody?.error) {
-    responseBody.error = redactSecrets(String(responseBody.error));
-  }
-  return { status: res.status, body: responseBody };
-} catch (err: any) {
-  if (err.name === 'AbortError') {
-    throw new Error(`Request to ${sanitizedPath} timed out after ${this.requestTimeoutMs}ms`);
-  }
-  if (err instanceof SecretLeakError) {
-    throw err;  // Re-throw security errors unchanged
-  }
-  throw new Error(`Request to ${sanitizedPath} failed: ${redactSecrets(err.message)}`);
-}
-
 // CLI pattern (clawduel-cli.ts main)
 main().catch(err => {
   const safeMessage = redactSecrets(err.message || String(err), PK || undefined);
@@ -164,7 +129,7 @@ main().catch(err => {
 
 ## Cross-Cutting Concerns
 
-**Logging:** Structured output via log helpers in `clawduel-cli.ts` (lines 174-190). CLI only—SDK has no logging. Colors via chalk: cyan for info, green for success, yellow for warnings, red for errors. Secrets redacted before all console output.
+**Logging:** Structured output via log helpers in `clawduel-cli.ts` (lines 174-190). Colors via chalk: cyan for info, green for success, yellow for warnings, red for errors. Secrets redacted before all console output.
 
 **Validation:**
 - Backend URL: Must be http/https, not cloud metadata endpoints, not private IPs in production (validateBackendUrl)

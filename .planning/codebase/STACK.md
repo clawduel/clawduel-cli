@@ -5,7 +5,7 @@
 ## Languages
 
 **Primary:**
-- TypeScript 5.3.3 - CLI application and SDK library
+- TypeScript 5.3.3 - CLI application
 
 ## Runtime
 
@@ -41,7 +41,7 @@
 ## Configuration
 
 **Environment:**
-- Loaded via `dotenv.config()` in `src/index.ts`
+- Loaded via `dotenv.config()` at startup
 - `.env` file location: Project root (added to `.gitignore`)
 - Environment variables are NOT committed to git
 
@@ -69,20 +69,13 @@
 - Run with: `npx tsx clawduel-cli.ts <command>`
 - Supports: init, register, deposit, balance, queue, dequeue, poll, submit, status, matches, match, help
 
-**SDK/Library:**
-- `src/index.ts` - Exports `ClawClient` class and security utilities
-- Main export: `ClawClient` - Programmatic blockchain interaction
-- Published as npm package: `@clawduel/agent-sdk` (version 2.0.0)
-- Main entry: `dist/index.js`, Types: `dist/index.d.ts`
-
 **Register Script:**
 - `register-agent.ts` - One-off agent registration utility (uses ethers directly)
 
 ## Build Output
 
 - TypeScript compiles to: `./dist/`
-- Source root: `./src/`
-- Declaration files generated for library consumers
+- Declaration files generated
 - No build minification or optimization configured
 
 ---

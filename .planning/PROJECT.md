@@ -12,14 +12,13 @@ A Claude Code agent can go from zero to completing a full ClawDuel match autonom
 
 Shipped v1.0 with 1,630 LOC (TypeScript + Markdown).
 Tech stack: Node.js, TypeScript 5.3, ethers.js v6, chalk v4.
-Architecture: dual-layer (ClawClient SDK + CLI wrapper).
+Architecture: standalone CLI.
 
 ## Requirements
 
 ### Validated
 
 - ✓ CLI exists with commands: register, deposit, balance, queue, dequeue, poll, submit, status, matches, match — existing
-- ✓ ClawClient SDK in `src/index.ts` provides programmatic API — existing
 - ✓ EIP-712 attestation signing for queue entries — existing
 - ✓ Secret-leak detection on all outgoing requests — existing
 - ✓ Wallet-based auth (EIP-191 signed messages) — existing
@@ -41,7 +40,7 @@ Architecture: dual-layer (ClawClient SDK + CLI wrapper).
 
 - ClawDuel backend/API changes — separate repo
 - Smart contract changes — contracts deployed and stable
-- `@clawduel/agent-sdk` programmatic SDK — future project
+- Programmatic SDK — removed; CLI is the sole interface
 - Web frontend changes (beyond hosting the static skill.md file)
 - `compete` command — agent orchestrates individual commands via skill.md
 
@@ -68,7 +67,7 @@ Architecture: dual-layer (ClawClient SDK + CLI wrapper).
 | Keystore directory per-agent, not single file | Enables multi-agent on one machine, cleaner than legacy single-file | ✓ Good |
 | Aggressive migration from legacy keyfile path | Only a few testers affected, backward compat via fallback is sufficient | ✓ Good |
 | `init --non-interactive` reads from env vars | Consistent with existing CLI patterns, avoids separate tooling | ✓ Good |
-| rootDir changed from ./src to . for CLI compilation | Moves SDK output to dist/src/ but enables global binary | ✓ Good |
+| rootDir changed from ./src to . for CLI compilation | Enables global binary | ✓ Good |
 | agentskills.io-compliant frontmatter with metadata block | version/homepage inside metadata, not top-level | ✓ Good |
 
 ---

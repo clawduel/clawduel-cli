@@ -6,9 +6,7 @@
 
 ```
 clawduel-cli/
-├── src/                    # TypeScript source for SDK (published to npm)
-│   └── index.ts           # ClawClient class, security utils, type exports
-├── clawduel-cli.ts            # CLI wrapper around ClawClient (entry point for agents)
+├── clawduel-cli.ts            # Standalone CLI (entry point for agents)
 ├── register-agent.ts      # Example registration script (reference implementation)
 ├── tsconfig.json          # TypeScript configuration (ES2020, CommonJS)
 ├── package.json           # Dependencies: ethers, chalk, dotenv
@@ -20,15 +18,9 @@ clawduel-cli/
 
 ## Directory Purposes
 
-**src/ (SDK Library):**
-- Purpose: Reusable SDK for agents importing the package
-- Contains: ClawClient class, type definitions, security utility functions
-- Key files: `index.ts` (412 lines)
-- Compiled to: `dist/` (build output, not committed)
-
 **Root (CLI + Entry Point):**
-- Purpose: CLI executable and configuration
-- Contains: `clawduel-cli.ts` (967 lines, all logic in one file), `register-agent.ts` example
+- Purpose: Standalone CLI executable and configuration
+- Contains: `clawduel-cli.ts` (all logic in one file), `register-agent.ts` example
 - Key files: `clawduel-cli.ts`, `tsconfig.json`, `package.json`
 
 **.planning/codebase/ (Analysis Documentation):**
@@ -39,7 +31,6 @@ clawduel-cli/
 ## Key File Locations
 
 **Entry Points:**
-- `src/index.ts`: SDK library entry point (exported as `dist/index.js` in package.json main)
 - `clawduel-cli.ts`: CLI entry point (`#!/usr/bin/env npx tsx` shebang, executable)
 - `register-agent.ts`: Example script demonstrating authentication flow
 
@@ -48,10 +39,7 @@ clawduel-cli/
 - `package.json`: Dependencies (ethers, chalk, dotenv), version 2.0.0
 
 **Core Logic:**
-- `src/index.ts` (lines 13-132): Security utilities (SECRET_PATTERNS, detection, redaction, validation)
-- `src/index.ts` (lines 175-398): ClawClient class (wallet, provider, contracts, API methods)
-- `clawduel-cli.ts` (lines 204-828): Command handlers (register, deposit, balance, queue, poll, submit, matches, etc.)
-- `clawduel-cli.ts` (lines 879-967): Main dispatcher and error handling
+- `clawduel-cli.ts`: Security utilities, command handlers, blockchain interaction, main dispatcher and error handling
 
 **Testing:**
 - No test files present. Manual testing documented in `skill.md`.
@@ -77,7 +65,7 @@ clawduel-cli/
 
 **Types:**
 - PascalCase interfaces: `ClientOptions`
-- PascalCase classes: `ClawClient`, `SecretLeakError`
+- PascalCase classes: `SecretLeakError`
 
 **Variables:**
 - camelCase module-level: `wallet`, `provider`, `PK`, `contracts`, `PRIVATE_KEY_FOR_REDACTION`
@@ -106,29 +94,11 @@ clawduel-cli/
 
 4. Update command documentation: Shebang comments at top of `clawduel-cli.ts` (line 19-31)
 
-**New Feature in ClawClient:**
-1. Add method to `src/index.ts` ClawClient class (after line 397)
-   - Name: `async <methodName>(...): Promise<ReturnType>`
-   - Use `this.apiPost()` / `this.apiGet()` for backend calls
-   - Return typed response object
-   - No logging (SDK is library)
-
-2. Export helper if needed (lines 402-411)
-   - Add to `export { ... }` block
-
-3. Ensure method calls `assertNoSecretLeak(body, this.privateKey)` before `apiPost()`
-
-**New Shared Utility (Security, Validation):**
-1. Add to appropriate section in both `src/index.ts` AND `clawduel-cli.ts`
-   - Security utilities: around line 13-132
-   - Validation: near URL validation (line 81-107 in src, 118-134 in cli)
-
-2. If SDK-only: Add to `src/index.ts` only, export if public
-
-3. If CLI-only: Add to `clawduel-cli.ts` only
+**New Utility (Security, Validation):**
+- Add to appropriate section in `clawduel-cli.ts`
 
 **Blockchain Interaction (On-Chain):**
-- Add to `cmdXxx()` or ClawClient method
+- Add to `cmdXxx()` function in `clawduel-cli.ts`
 - Use ethers.js Contract class with ABI functions
 - Example at lines 293-312 (deposit flow)
 
@@ -161,13 +131,6 @@ clawduel-cli/
 
 ## Import Patterns
 
-**SDK (`src/index.ts`) imports:**
-```typescript
-import { ethers } from 'ethers';      // External: blockchain library
-import chalk from 'chalk';             // External: colored CLI output
-import dotenv from 'dotenv';           // External: .env loading (optional, not used in SDK)
-```
-
 **CLI (`clawduel-cli.ts`) imports:**
 ```typescript
 import { ethers } from 'ethers';      // External: blockchain
@@ -190,11 +153,9 @@ No internal imports between files. All logic self-contained.
 - Declaration files: generated (`dist/index.d.ts`)
 
 **package.json:**
-- Name: `@clawduel/agent-sdk`
-- Version: 2.0.0
-- Main entry: `dist/index.js`
-- Types: `dist/index.d.ts`
-- Scripts: `build` runs `tsc`, `prepublishOnly` runs build before npm publish
+- Name: `@clawduel/clawduel-cli`
+- Binary: `clawduel`
+- Scripts: `build` runs `tsc`, `prepare` runs build
 
 **.gitignore:**
 - `node_modules/`
