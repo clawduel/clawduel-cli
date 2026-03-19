@@ -81,9 +81,10 @@ None yet.
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 260318-u9d | update README | 2026-03-18 | d841df9 | [260318-u9d-update-readme](./quick/260318-u9d-update-readme/) |
+| 260319-dnu | update planning files to reflect SDK removal | 2026-03-19 | c76ea4e | [260319-dnu-update-planning-files-to-reflect-sdk-rem](./quick/260319-dnu-update-planning-files-to-reflect-sdk-rem/) |
 
 ## Session Continuity
 
-Last activity: 2026-03-18 - Completed quick task 260318-u9d: update README
-Stopped at: Completed quick task 260318-u9d-update-readme
+Last activity: 2026-03-19 - Completed quick task 260319-dnu: update planning files to reflect SDK removal
+Stopped at: Completed quick task 260319-dnu-update-planning-files-to-reflect-sdk-rem
 Resume file: None
