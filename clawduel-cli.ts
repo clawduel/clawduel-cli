@@ -565,86 +565,32 @@ async function cmdBalance() {
   console.log(JSON.stringify(data));
 }
 
-// --- Nonce Tracking ---
+// --- Nonce Generation ---
 
 /**
- * Tracks pending attestation nonces per bet tier to avoid nonce replay.
- * Each tier gets its own nonce so re-queuing for the same tier reuses
- * the same nonce (the queue replaces duplicate entries per tier).
- * File: ~/.clawduel/pending_nonces.json
+ * Generates a random unused nonce for attestations.
+ * The contract allows any non-zero nonce and nullifies used ones,
+ * so we just generate a random uint256 and verify it's not already used on-chain.
  */
-const PENDING_NONCES_PATH = path.join(KEYFILE_DIR, 'pending_nonces.json');
+async function generateNonce(clawDuelAddress: string): Promise<bigint> {
+  const clawDuel = new ethers.Contract(clawDuelAddress, [
+    'function usedNonces(address, uint256) external view returns (bool)',
+  ], provider);
 
-interface PendingNonces {
-  /** Maps betTier string -> nonce string used for that tier's pending attestation */
-  tiers: Record<string, string>;
-}
+  let nonce: bigint;
+  do {
+    nonce = BigInt(ethers.hexlify(ethers.randomBytes(32)));
+  } while (nonce === BigInt(0) || await clawDuel.usedNonces(wallet.address, nonce));
 
-function loadPendingNonces(): PendingNonces {
-  try {
-    if (fs.existsSync(PENDING_NONCES_PATH)) {
-      return JSON.parse(fs.readFileSync(PENDING_NONCES_PATH, 'utf-8'));
-    }
-  } catch { /* ignore corrupt file */ }
-  return { tiers: {} };
-}
-
-function savePendingNonces(data: PendingNonces): void {
-  fs.mkdirSync(KEYFILE_DIR, { recursive: true });
-  fs.writeFileSync(PENDING_NONCES_PATH, JSON.stringify(data), { mode: 0o600 });
-}
-
-/**
- * Returns the next available nonce for a new attestation.
- * - Reads on-chain nonce as the floor.
- * - Checks pending nonces already assigned to other tiers.
- * - If this tier already has a pending nonce >= on-chain, reuses it
- *   (the queue replaces same-tier entries, so same nonce is fine).
- * - Otherwise picks max(onChain, highest_pending + 1).
- */
-function getNextNonce(onChainNonce: bigint, betTierKey: string): { nonce: bigint; pending: PendingNonces } {
-  const pending = loadPendingNonces();
-
-  // Prune nonces that the chain has already consumed
-  for (const [tier, nonceStr] of Object.entries(pending.tiers)) {
-    if (BigInt(nonceStr) < onChainNonce) {
-      delete pending.tiers[tier];
-    }
-  }
-
-  // If this tier already has a pending nonce, reuse it (same-tier re-queue)
-  if (pending.tiers[betTierKey] !== undefined) {
-    const existing = BigInt(pending.tiers[betTierKey]);
-    if (existing >= onChainNonce) {
-      return { nonce: existing, pending };
-    }
-  }
-
-  // Find the highest pending nonce across all tiers
-  let highest = onChainNonce - BigInt(1);
-  for (const nonceStr of Object.values(pending.tiers)) {
-    const n = BigInt(nonceStr);
-    if (n > highest) highest = n;
-  }
-
-  const nextNonce = highest + BigInt(1);
-  pending.tiers[betTierKey] = nextNonce.toString();
-  return { nonce: nextNonce, pending };
+  return nonce;
 }
 
 async function cmdQueue(betTierUsdc: number, timeoutSeconds: number = 3600) {
   log.info(`Queuing for duel at ${betTierUsdc} USDC tier...`);
 
   const betTier = ethers.parseUnits(betTierUsdc.toString(), 6);
-  const betTierKey = betTier.toString();
-
   // Sign EIP-712 attestation
-  const clawDuel = new ethers.Contract(contracts.clawDuel, [
-    'function nonces(address) external view returns (uint256)',
-  ], provider);
-
-  const onChainNonce = await clawDuel.nonces(wallet.address);
-  const { nonce, pending } = getNextNonce(onChainNonce, betTierKey);
+  const nonce = await generateNonce(contracts.clawDuel);
   const deadline = Math.floor(Date.now() / 1000) + timeoutSeconds;
   const chainId = (await provider.getNetwork()).chainId;
 
@@ -675,8 +621,6 @@ async function cmdQueue(betTierUsdc: number, timeoutSeconds: number = 3600) {
   });
 
   if (status >= 200 && status < 300) {
-    // Persist the pending nonce only on successful queue
-    savePendingNonces(pending);
     log.success('Queued for duel');
   } else {
     log.error(`Queue failed (${status}): ${body?.error || 'Unknown error'}`);
@@ -695,10 +639,6 @@ async function cmdDequeue(betTierUsdc: number) {
   }, 'DELETE');
 
   if (status >= 200 && status < 300) {
-    // Remove pending nonce for this tier
-    const pending = loadPendingNonces();
-    delete pending.tiers[betTier.toString()];
-    savePendingNonces(pending);
     log.success('Removed from queue');
   } else {
     log.error(`Dequeue failed (${status}): ${body?.error || 'Unknown error'}`);
