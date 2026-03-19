@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Rust Rewrite
 status: executing
-stopped_at: Completed 05-01-PLAN.md
-last_updated: "2026-03-19T22:41:00.000Z"
+stopped_at: Completed 06-01-PLAN.md
+last_updated: "2026-03-19T22:50:00.000Z"
 progress:
-  total_phases: 3
-  completed_phases: 2
-  total_plans: 3
-  completed_plans: 3
+  total_phases: 4
+  completed_phases: 3
+  total_plans: 4
+  completed_plans: 4
 ---
 
 # Project State
@@ -19,30 +19,31 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-19)
 
 **Core value:** A Claude Code agent can go from zero to completing a full ClawDuel match autonomously
-**Current focus:** Phase 5 - Command Port (v2.0 Rust Rewrite) -- COMPLETE
+**Current focus:** Phase 6 - Output, Shell & Distribution (v2.0 Rust Rewrite) -- COMPLETE
 
 ## Current Position
 
-Phase: 5 of 7 (Command Port) -- COMPLETE
-Plan: All plans complete (05-01)
-Status: Phase 5 complete, ready for Phase 6
-Last activity: 2026-03-19 -- Completed 05-01 (port all CLI commands)
+Phase: 6 of 7 (Output, Shell & Distribution) -- COMPLETE
+Plan: All plans complete (06-01)
+Status: Phase 6 complete, ready for Phase 7
+Last activity: 2026-03-19 -- Completed 06-01 (output, shell, upgrade, release)
 
-Progress: [██████████] 100%
+Progress: [████████░░] 75%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 1
-- Average duration: 9 min
-- Total execution time: 0.15 hours
+- Total plans completed: 4
+- Average duration: 8 min
+- Total execution time: 0.55 hours
 
 | Phase | Plan | Duration | Tasks | Files |
 |-------|------|----------|-------|-------|
 | 04    | 01   | 9 min    | 2     | 9     |
 | 04    | 02   | 7 min    | 2     | 7     |
 | 05    | 01   | 11 min   | 6     | 16    |
+| 06    | 01   | 6 min    | 5     | 16    |
 
 ## Accumulated Context
 
@@ -67,6 +68,10 @@ Recent decisions affecting current work:
 - [05-01]: Computed EIP-712 hash via SolStruct::eip712_signing_hash then sign_hash
 - [05-01]: Upgraded alloy 1.6.3 -> 1.7.3 for contract/provider sub-crate availability
 - [05-01]: Manual ISO 8601 parser for poll wait times (avoids chrono dependency)
+- [06-01]: Used tabled 0.17 for pretty table output with Style::rounded()
+- [06-01]: Used rustyline 15 for readline REPL with history
+- [06-01]: Box::pin shell future to break async recursion cycle
+- [06-01]: OutputFormat enum with clap ValueEnum derive for --output flag
 
 ### Pending Todos
 
@@ -83,6 +88,6 @@ None yet.
 
 ## Session Continuity
 
-Last activity: 2026-03-19 - Completed 05-01-PLAN.md
-Stopped at: Completed 05-01-PLAN.md, Phase 5 complete, ready for Phase 6
+Last activity: 2026-03-19 - Completed 06-01-PLAN.md
+Stopped at: Completed 06-01-PLAN.md, Phase 6 complete, ready for Phase 7
 Resume file: None

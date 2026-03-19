@@ -18,9 +18,9 @@
 
 ### v2.0 Rust Rewrite
 
-- [ ] **Phase 4: Foundation** - Rust binary scaffolding, config system, wallet management, HTTP client with auth and security
-- [ ] **Phase 5: Command Port** - Port all existing CLI commands with EIP-712 signing and input validation
-- [ ] **Phase 6: Output, Shell & Distribution** - Dual output format, interactive shell, status/upgrade commands, release optimization
+- [x] **Phase 4: Foundation** - Rust binary scaffolding, config system, wallet management, HTTP client with auth and security
+- [x] **Phase 5: Command Port** - Port all existing CLI commands with EIP-712 signing and input validation
+- [x] **Phase 6: Output, Shell & Distribution** - Dual output format, interactive shell, status/upgrade commands, release optimization
 - [ ] **Phase 7: Cleanup & Docs** - Remove old TypeScript code, update .gitignore, README, and skill.md
 
 ## Phase Details
@@ -63,10 +63,10 @@ Plans:
   2. User can launch `clawduel shell` and execute any command interactively with readline history
   3. User can run `clawduel status` to check API health and `clawduel upgrade` to self-update the binary
   4. Release binary is built with LTO, stripped symbols, and single codegen unit for minimal size
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 06-01: TBD
+- [x] 06-01-PLAN.md -- Dual output format, interactive shell, upgrade command, release optimization (UX-01..05, CONF-03..05)
 
 ### Phase 7: Cleanup & Docs
 **Goal**: Remove old TypeScript code, update .gitignore for Rust, update README and skill.md to reflect the Rust CLI
@@ -93,5 +93,5 @@ Plans:
 | 3. Skill Document | v1.0 | 1/1 | Complete | 2026-03-18 |
 | 4. Foundation | v2.0 | 2/2 | Complete | 2026-03-19 |
 | 5. Command Port | v2.0 | 1/1 | Complete | 2026-03-19 |
-| 6. Output, Shell & Distribution | v2.0 | 0/? | Not started | - |
+| 6. Output, Shell & Distribution | v2.0 | 1/1 | Complete | 2026-03-19 |
 | 7. Cleanup & Docs | v2.0 | 0/? | Not started | - |

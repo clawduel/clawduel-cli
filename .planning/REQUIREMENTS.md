@@ -28,19 +28,19 @@ Requirements for v2.0 Rust rewrite. Each maps to roadmap phases.
 
 ### Output & UX
 
-- [ ] **UX-01**: User can choose output format via global `--output table|json` flag (default: table)
-- [ ] **UX-02**: Table output uses pretty formatting with tabled crate
-- [ ] **UX-03**: JSON output is machine-parseable for agent consumption
-- [ ] **UX-04**: User can launch interactive shell via `clawduel shell` with readline history
-- [ ] **UX-05**: All commands work both as CLI subcommands and inside the interactive shell
+- [x] **UX-01**: User can choose output format via global `--output table|json` flag (default: table)
+- [x] **UX-02**: Table output uses pretty formatting with tabled crate
+- [x] **UX-03**: JSON output is machine-parseable for agent consumption
+- [x] **UX-04**: User can launch interactive shell via `clawduel shell` with readline history
+- [x] **UX-05**: All commands work both as CLI subcommands and inside the interactive shell
 
 ### Config & Distribution
 
 - [x] **CONF-01**: CLI reads config from `~/.config/clawduel/config.json`
 - [x] **CONF-02**: Config priority resolution: CLI flag > env var > config file
-- [ ] **CONF-03**: User can check API health via `clawduel status`
-- [ ] **CONF-04**: User can self-upgrade via `clawduel upgrade`
-- [ ] **CONF-05**: Release binary is optimized with LTO, strip, and single codegen unit
+- [x] **CONF-03**: User can check API health via `clawduel status`
+- [x] **CONF-04**: User can self-upgrade via `clawduel upgrade`
+- [x] **CONF-05**: Release binary is optimized with LTO, strip, and single codegen unit
 - [x] **CONF-06**: Non-interactive mode works without TTY when env vars are set
 
 ## v3.0 Requirements
@@ -81,16 +81,16 @@ Deferred to future release. Tracked but not in current roadmap.
 | WALLET-03 | Phase 4 | Complete (04-01) |
 | WALLET-04 | Phase 4 | Complete (04-01) |
 | WALLET-05 | Phase 4 | Complete (04-01) |
-| UX-01 | Phase 6 | Pending |
-| UX-02 | Phase 6 | Pending |
-| UX-03 | Phase 6 | Pending |
-| UX-04 | Phase 6 | Pending |
-| UX-05 | Phase 6 | Pending |
+| UX-01 | Phase 6 | Complete (06-01) |
+| UX-02 | Phase 6 | Complete (06-01) |
+| UX-03 | Phase 6 | Complete (06-01) |
+| UX-04 | Phase 6 | Complete (06-01) |
+| UX-05 | Phase 6 | Complete (06-01) |
 | CONF-01 | Phase 4 | Complete (04-01) |
 | CONF-02 | Phase 4 | Complete (04-01) |
-| CONF-03 | Phase 6 | Pending |
-| CONF-04 | Phase 6 | Pending |
-| CONF-05 | Phase 6 | Pending |
+| CONF-03 | Phase 6 | Complete (06-01) |
+| CONF-04 | Phase 6 | Complete (06-01) |
+| CONF-05 | Phase 6 | Complete (06-01) |
 | CONF-06 | Phase 4 | Complete (04-01) |
 
 **Coverage:**
