@@ -1,4 +1,4 @@
-#!/usr/bin/env npx tsx
+#!/usr/bin/env node
 /**
  * ClawDuel CLI
  *
@@ -6,6 +6,7 @@
  * Handles signing, deposits, queueing, polling, and submission.
  *
  * Security features:
+ *   - Encrypted keyfile storage (~/.clawduel/keyfile.json)
  *   - Secret leak detection on ALL outgoing request bodies (private keys, mnemonics, API keys)
  *   - Request timeouts on all fetch calls
  *   - Backend URL validation (anti-SSRF)
@@ -15,25 +16,35 @@
  *   - Safe error handling (no secret reflection)
  *
  * Usage:
- *   npx tsx claw-cli.ts <command> [options]
+ *   clawduel-cli <command> [options]
  *
  * Commands:
+ *   init       Set up encrypted keystore [--non-interactive]
  *   deposit    --amount <usdc_amount>
  *   balance
- *   queue      --bet-tier <10|100|1000|10000|100000>
+ *   queue      --bet-tier <10|100|1000|10000|100000> [--timeout <seconds>]
+ *   dequeue    --bet-tier <10|100|1000|10000|100000>
  *   poll       (returns current match or null)
  *   submit     --match-id <id> --prediction <value>
  *   status     (agent info)
  *   matches    [--status <filter>] [--page <n>] [--category <cat>] [--from <ISO>] [--to <ISO>]
  *   match      --id <matchId>
  *
+ * Global Options:
+ *   --agent <address>   Select which keystore to use (for multi-agent setups)
+ *
  * Environment:
- *   AGENT_PRIVATE_KEY  - required
+ *   AGENT_PRIVATE_KEY  - optional fallback (keyfile preferred)
  *   CLAW_BACKEND_URL   - default: http://localhost:3001
  *   CLAW_RPC_URL       - default: http://localhost:8545
+ *   CLAW_AGENT_ADDRESS - select keystore by address (alternative to --agent)
  */
 import { ethers } from 'ethers';
 import chalk from 'chalk';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as os from 'os';
+import * as readline from 'readline';
 
 // --- Security: Secret Leak Detection ---
 
@@ -182,27 +193,187 @@ const log = {
   json: (data: any) => console.log(JSON.stringify(data, null, 2)),
 };
 
-// --- Setup ---
+// --- Keyfile Helpers ---
 
-const PK = process.env.AGENT_PRIVATE_KEY;
-if (!PK) {
+const KEYFILE_DIR = path.join(os.homedir(), '.clawduel');
+const KEYFILE_PATH = process.env.CLAW_KEYFILE || path.join(KEYFILE_DIR, 'keyfile.json');
+const KEYSTORES_DIR = path.join(os.homedir(), '.clawduel', 'keystores');
+
+function promptLine(question: string): Promise<string> {
+  const rl = readline.createInterface({ input: process.stdin, output: process.stderr });
+  return new Promise((resolve) => {
+    rl.question(question, (answer) => { rl.close(); resolve(answer); });
+  });
+}
+
+async function cmdInit(args: string[]) {
+  const nonInteractive = args.includes('--non-interactive');
+
   console.log(BANNER);
-  log.error('AGENT_PRIVATE_KEY environment variable is required.');
-  log.dim('Set it before running any command:');
-  log.dim('  export AGENT_PRIVATE_KEY=0x...');
+  log.info('Setting up encrypted keyfile...');
+  console.log('');
+
+  let privateKey: string;
+  let password: string;
+
+  if (nonInteractive) {
+    privateKey = process.env.AGENT_PRIVATE_KEY || '';
+    password = process.env.CLAW_KEY_PASSWORD || '';
+    if (!privateKey) {
+      log.error('AGENT_PRIVATE_KEY env var required for --non-interactive mode');
+      process.exit(1);
+    }
+    if (!password) {
+      log.error('CLAW_KEY_PASSWORD env var required for --non-interactive mode');
+      process.exit(1);
+    }
+  } else {
+    privateKey = process.env.AGENT_PRIVATE_KEY || await promptLine('Paste your private key: ');
+    if (!privateKey.trim()) {
+      log.error('No private key provided. Aborting.');
+      process.exit(1);
+    }
+    password = await promptLine('Enter encryption password (will not be hidden): ');
+    if (!password) {
+      log.error('No password provided. Aborting.');
+      process.exit(1);
+    }
+  }
+
+  // Validate the key by creating a wallet
+  let tempWallet: ethers.Wallet;
+  try {
+    tempWallet = new ethers.Wallet(privateKey.trim());
+  } catch {
+    log.error('Invalid private key format. Aborting.');
+    process.exit(1);
+  }
+
+  log.info('Encrypting keyfile (this may take a moment)...');
+  const encrypted = await tempWallet.encrypt(password);
+
+  // Write to keystores directory (MAGT-01)
+  fs.mkdirSync(KEYSTORES_DIR, { recursive: true, mode: 0o700 });
+  const filename = `${tempWallet.address.toLowerCase()}.json`;
+  const keystorePath = path.join(KEYSTORES_DIR, filename);
+  fs.writeFileSync(keystorePath, encrypted, { mode: 0o600 });
+
+  log.success('Keystore saved to ' + keystorePath);
+  log.field('Address', tempWallet.address);
+  console.log('');
+  console.log(JSON.stringify({ ok: true, address: tempWallet.address, keystore: keystorePath }));
+}
+
+function discoverKeystores(): string[] {
+  if (!fs.existsSync(KEYSTORES_DIR)) return [];
+  return fs.readdirSync(KEYSTORES_DIR)
+    .filter(f => f.endsWith('.json'))
+    .map(f => path.join(KEYSTORES_DIR, f));
+}
+
+function selectKeystore(agentAddress?: string): string | null {
+  const keystores = discoverKeystores();
+
+  if (keystores.length === 0) {
+    return null; // No keystores found, fall through to legacy paths
+  }
+
+  if (agentAddress) {
+    // MAGT-02: Explicit selection by address
+    const normalized = agentAddress.toLowerCase().replace(/^0x/, '');
+    const match = keystores.find(k => {
+      const base = path.basename(k, '.json').toLowerCase().replace(/^0x/, '');
+      return base === normalized;
+    });
+    if (!match) {
+      log.error(`No keystore found for agent ${agentAddress}`);
+      log.dim('Available keystores:');
+      for (const k of keystores) {
+        log.dim(`  ${path.basename(k, '.json')}`);
+      }
+      process.exit(1);
+    }
+    return match;
+  }
+
+  if (keystores.length === 1) {
+    // MAGT-03: Auto-select when only one exists
+    return keystores[0];
+  }
+
+  // Multiple keystores, no --agent specified
+  log.error('Multiple keystores found. Specify which agent to use:');
+  for (const k of keystores) {
+    log.dim(`  --agent ${path.basename(k, '.json')}`);
+  }
+  log.dim('Or set CLAW_AGENT_ADDRESS env var');
+  process.exit(1);
+}
+
+async function loadWallet(agentAddress?: string): Promise<{ wallet: ethers.Wallet; privateKey: string }> {
+  const BACKEND = process.env.CLAW_BACKEND_URL || 'http://localhost:3001';
+  const RPC = process.env.CLAW_RPC_URL || 'http://localhost:8545';
+  validateBackendUrl(BACKEND);
+  const prov = new ethers.JsonRpcProvider(RPC);
+
+  // Try keystores directory first (KEYS-02, MAGT-01, MAGT-02, MAGT-03)
+  const keystorePath = selectKeystore(agentAddress);
+  if (keystorePath) {
+    log.dim('Found keystore at ' + keystorePath);
+    const password = process.env.CLAW_KEY_PASSWORD || await promptLine('Enter keystore password: ');
+    try {
+      log.info('Decrypting keystore...');
+      const encryptedJson = fs.readFileSync(keystorePath, 'utf-8');
+      const decryptedWallet = await ethers.Wallet.fromEncryptedJson(encryptedJson, password);
+      const connectedWallet = decryptedWallet.connect(prov);
+      return { wallet: connectedWallet as ethers.Wallet, privateKey: decryptedWallet.privateKey };
+    } catch {
+      log.error('Failed to decrypt keystore. Wrong password?');
+      process.exit(1);
+    }
+  }
+
+  // Fallback: legacy keyfile.json (preserves backward compatibility)
+  if (fs.existsSync(KEYFILE_PATH)) {
+    log.dim('Found legacy keyfile at ' + KEYFILE_PATH);
+    const password = process.env.CLAW_KEY_PASSWORD || await promptLine('Enter keyfile password: ');
+    try {
+      log.info('Decrypting keyfile...');
+      const encryptedJson = fs.readFileSync(KEYFILE_PATH, 'utf-8');
+      const decryptedWallet = await ethers.Wallet.fromEncryptedJson(encryptedJson, password);
+      const connectedWallet = decryptedWallet.connect(prov);
+      return { wallet: connectedWallet as ethers.Wallet, privateKey: decryptedWallet.privateKey };
+    } catch {
+      log.error('Failed to decrypt keyfile. Wrong password?');
+      process.exit(1);
+    }
+  }
+
+  // Fallback: env var
+  const pk = process.env.AGENT_PRIVATE_KEY;
+  if (pk) {
+    log.dim('Using AGENT_PRIVATE_KEY from environment (keystore preferred)');
+    const w = new ethers.Wallet(pk, prov);
+    return { wallet: w, privateKey: pk };
+  }
+
+  // Nothing available
+  console.log(BANNER);
+  log.error('No keystore, keyfile, or AGENT_PRIVATE_KEY found.');
+  log.dim('Run `clawduel-cli init` to set up your encrypted keystore.');
+  log.dim('Or set AGENT_PRIVATE_KEY as a fallback.');
   console.log('');
   process.exit(1);
 }
-PRIVATE_KEY_FOR_REDACTION = PK;
+
+// --- Setup (lazy, initialized in main) ---
 
 const BACKEND = process.env.CLAW_BACKEND_URL || 'http://localhost:3001';
 const RPC = process.env.CLAW_RPC_URL || 'http://localhost:8545';
 
-// Validate backend URL at startup
-validateBackendUrl(BACKEND);
-
-const provider = new ethers.JsonRpcProvider(RPC);
-const wallet = new ethers.Wallet(PK, provider);
+let PK: string = '';
+let provider: ethers.JsonRpcProvider;
+let wallet: ethers.Wallet;
 
 // Contract addresses
 let contracts: {
@@ -213,9 +384,9 @@ let contracts: {
 
 async function loadContracts() {
   contracts = {
-    bank: process.env.CLAW_BANK_ADDRESS || '0x8A791620dd6260079BF849Dc5567aDC3F2FdC318',
-    clawDuel: process.env.CLAW_CLAWDUEL_ADDRESS || '0x610178dA211FEF7D417bC0e6FeD39F05609AD788',
-    usdc: process.env.CLAW_USDC_ADDRESS || '0x2279B7A0a67DB372996a5FaB50D91eAA73d2eBe6',
+    bank: process.env.CLAW_BANK_ADDRESS || '0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512',
+    clawDuel: process.env.CLAW_CLAWDUEL_ADDRESS || '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0',
+    usdc: process.env.CLAW_USDC_ADDRESS || '0x5FbDB2315678afecb367f032d93F642f64180aa3',
   };
 }
 
@@ -236,7 +407,7 @@ async function authHeaders(): Promise<Record<string, string>> {
   };
 }
 
-async function apiPost(path: string, body: any): Promise<any> {
+async function apiPost(path: string, body: any, method: string = 'POST'): Promise<any> {
   // SECURITY: Scan outgoing body for secrets BEFORE sending
   assertNoSecretLeak(body, PK);
 
@@ -247,7 +418,7 @@ async function apiPost(path: string, body: any): Promise<any> {
 
   try {
     const res = await fetch(`${BACKEND}${path}`, {
-      method: 'POST',
+      method,
       headers,
       body: JSON.stringify(body),
       signal: controller.signal,
@@ -272,11 +443,13 @@ async function apiPost(path: string, body: any): Promise<any> {
 }
 
 async function apiGet(path: string): Promise<any> {
+  const headers = await authHeaders();
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
   try {
     const res = await fetch(`${BACKEND}${path}`, {
+      headers,
       signal: controller.signal,
     });
 
@@ -392,18 +565,33 @@ async function cmdBalance() {
   console.log(JSON.stringify(data));
 }
 
-async function cmdQueue(betTierUsdc: number) {
+// --- Nonce Generation ---
+
+/**
+ * Generates a random unused nonce for attestations.
+ * The contract allows any non-zero nonce and nullifies used ones,
+ * so we just generate a random uint256 and verify it's not already used on-chain.
+ */
+async function generateNonce(clawDuelAddress: string): Promise<bigint> {
+  const clawDuel = new ethers.Contract(clawDuelAddress, [
+    'function usedNonces(address, uint256) external view returns (bool)',
+  ], provider);
+
+  let nonce: bigint;
+  do {
+    nonce = BigInt(ethers.hexlify(ethers.randomBytes(32)));
+  } while (nonce === BigInt(0) || await clawDuel.usedNonces(wallet.address, nonce));
+
+  return nonce;
+}
+
+async function cmdQueue(betTierUsdc: number, timeoutSeconds: number = 3600) {
   log.info(`Queuing for duel at ${betTierUsdc} USDC tier...`);
 
   const betTier = ethers.parseUnits(betTierUsdc.toString(), 6);
-
   // Sign EIP-712 attestation
-  const clawDuel = new ethers.Contract(contracts.clawDuel, [
-    'function nonces(address) external view returns (uint256)',
-  ], provider);
-
-  const nonce = await clawDuel.nonces(wallet.address);
-  const deadline = Math.floor(Date.now() / 1000) + 3600;
+  const nonce = await generateNonce(contracts.clawDuel);
+  const deadline = Math.floor(Date.now() / 1000) + timeoutSeconds;
   const chainId = (await provider.getNetwork()).chainId;
 
   const domain = {
@@ -441,10 +629,67 @@ async function cmdQueue(betTierUsdc: number) {
   console.log(JSON.stringify({ status, ...body }));
 }
 
+async function cmdDequeue(betTierUsdc: number) {
+  log.info(`Cancelling queue for ${betTierUsdc} USDC tier...`);
+
+  const betTier = ethers.parseUnits(betTierUsdc.toString(), 6);
+
+  const { status, body } = await apiPost('/duels/queue', {
+    betTier: betTier.toString(),
+  }, 'DELETE');
+
+  if (status >= 200 && status < 300) {
+    log.success('Removed from queue');
+  } else {
+    log.error(`Dequeue failed (${status}): ${body?.error || 'Unknown error'}`);
+  }
+
+  console.log(JSON.stringify({ status, ...body }));
+}
+
 async function cmdPoll() {
   // Sanitize the address used in the URL path
   const safeAddress = sanitizePathSegment(wallet.address);
   const data = await apiGet(`/matches/active/${safeAddress}`);
+
+  // Handle ready acknowledgement flow
+  if (data?.match && data.match.status === 'waiting_ready' && data.match.readyUrl && data.match.problem === null) {
+    log.info('Match found, sending ready signal...');
+    const url = new URL(data.match.readyUrl);
+    const { status, body } = await apiPost(url.pathname, {});
+    if (status >= 200 && status < 300) {
+      log.success('Ready signal sent');
+      if (body?.startsAt) {
+        const waitMs = new Date(body.startsAt).getTime() - Date.now();
+        if (waitMs > 0) {
+          log.info(`Match starts in ${Math.ceil(waitMs / 1000)}s, waiting...`);
+          await new Promise(r => setTimeout(r, waitMs));
+        }
+      } else {
+        log.info('Waiting for opponent...');
+      }
+    } else {
+      log.warn(`Ready acknowledgement failed (${status}): ${body?.error || 'Unknown error'}`);
+    }
+
+    // Re-poll to get updated state
+    const updatedData = await apiGet(`/matches/active/${safeAddress}`);
+    console.log(JSON.stringify(updatedData));
+    return;
+  }
+
+  // Both agents ready, waiting for synchronized start
+  if (data?.match && data.match.status === 'waiting_start' && data.match.startsAt) {
+    const waitMs = new Date(data.match.startsAt).getTime() - Date.now();
+    if (waitMs > 0) {
+      log.info(`Match starts in ${Math.ceil(waitMs / 1000)}s, waiting...`);
+      await new Promise(r => setTimeout(r, waitMs));
+    }
+    const updatedData = await apiGet(`/matches/active/${safeAddress}`);
+    console.log(JSON.stringify(updatedData));
+    return;
+  }
+
   console.log(JSON.stringify(data));
 }
 
@@ -616,15 +861,19 @@ function showHelp() {
   console.log(chalk.white.bold('  Usage'));
   console.log(chalk.gray('  ' + '-'.repeat(44)));
   console.log('');
-  console.log(chalk.white('  npx tsx claw-cli.ts ') + chalk.cyan('<command>') + chalk.gray(' [options]'));
+  console.log(chalk.white('  clawduel-cli ') + chalk.cyan('<command>') + chalk.gray(' [options]'));
   console.log('');
   console.log(chalk.white.bold('  Commands'));
   console.log(chalk.gray('  ' + '-'.repeat(44)));
   console.log('');
+  console.log(chalk.cyan('  init      ') + chalk.gray('                        ') + chalk.white('Set up encrypted keystore (~/.clawduel/keystores/)'));
+  console.log(chalk.gray('            ') + chalk.gray('[--non-interactive]     ') + chalk.white('Use env vars (no prompts)'));
   console.log(chalk.cyan('  register  ') + chalk.gray('--nickname <name>       ') + chalk.white('Register your agent'));
   console.log(chalk.cyan('  deposit   ') + chalk.gray('--amount <usdc>         ') + chalk.white('Deposit USDC into the bank'));
   console.log(chalk.cyan('  balance   ') + chalk.gray('                        ') + chalk.white('Check your bank balance'));
   console.log(chalk.cyan('  queue     ') + chalk.gray('--bet-tier <tier>       ') + chalk.white('Queue for a duel (10/100/1000/10000/100000)'));
+  console.log(chalk.gray('            ') + chalk.gray('[--timeout <seconds>]   ') + chalk.white('Attestation deadline (default: 3600)'));
+  console.log(chalk.cyan('  dequeue   ') + chalk.gray('--bet-tier <tier>       ') + chalk.white('Cancel queue for a bet tier'));
   console.log(chalk.cyan('  poll      ') + chalk.gray('                        ') + chalk.white('Poll for your active match'));
   console.log(chalk.cyan('  submit    ') + chalk.gray('--match-id <id>         ') + chalk.white('Submit your prediction'));
   console.log(chalk.gray('            ') + chalk.gray('--prediction <value>    '));
@@ -635,10 +884,17 @@ function showHelp() {
   console.log(chalk.cyan('  match     ') + chalk.gray('--id <matchId>          ') + chalk.white('View match details'));
   console.log(chalk.cyan('  help      ') + chalk.gray('                        ') + chalk.white('Show this help'));
   console.log('');
+  console.log(chalk.white.bold('  Global Options'));
+  console.log(chalk.gray('  ' + '-'.repeat(44)));
+  console.log('');
+  console.log(chalk.yellow('  --agent <address>       ') + chalk.white('Select keystore by agent address'));
+  console.log('');
   console.log(chalk.white.bold('  Environment'));
   console.log(chalk.gray('  ' + '-'.repeat(44)));
   console.log('');
-  console.log(chalk.yellow('  AGENT_PRIVATE_KEY       ') + chalk.gray('(required) Your Ethereum private key'));
+  console.log(chalk.yellow('  AGENT_PRIVATE_KEY       ') + chalk.gray('(optional fallback) Your Ethereum private key'));
+  console.log(chalk.yellow('  CLAW_KEY_PASSWORD       ') + chalk.gray('Password to decrypt keyfile non-interactively'));
+  console.log(chalk.yellow('  CLAW_AGENT_ADDRESS      ') + chalk.gray('Select keystore by address (or use --agent)'));
   console.log(chalk.yellow('  CLAW_BACKEND_URL        ') + chalk.gray('Backend URL (default: http://localhost:3001)'));
   console.log(chalk.yellow('  CLAW_RPC_URL            ') + chalk.gray('RPC URL (default: http://localhost:8545)'));
   console.log(chalk.yellow('  CLAW_BANK_ADDRESS       ') + chalk.gray('Bank contract address'));
@@ -656,14 +912,45 @@ function showHelp() {
 // --- Main ---
 
 async function main() {
-  await loadContracts();
   const [cmd, ...args] = process.argv.slice(2);
+
+  // Commands that don't require a wallet
+  if (cmd === 'init') {
+    await cmdInit(args);
+    return;
+  }
+  if (cmd === 'help' || cmd === '--help' || cmd === '-h' || !cmd) {
+    showHelp();
+    return;
+  }
+
+  // All other commands require a wallet
+  validateBackendUrl(BACKEND);
+
+  // Parse --agent flag (global, before command dispatch)
+  const agentIdx = args.indexOf('--agent');
+  const agentAddress = (agentIdx !== -1 && agentIdx + 1 < args.length)
+    ? args[agentIdx + 1]
+    : process.env.CLAW_AGENT_ADDRESS;
+
+  // Remove --agent and its value from args so command handlers don't see them
+  if (agentIdx !== -1) {
+    args.splice(agentIdx, 2);
+  }
+
+  const loaded = await loadWallet(agentAddress);
+  wallet = loaded.wallet;
+  PK = loaded.privateKey;
+  PRIVATE_KEY_FOR_REDACTION = PK;
+  provider = wallet.provider as ethers.JsonRpcProvider;
+
+  await loadContracts();
 
   const getArg = (flag: string): string => {
     const idx = args.indexOf(flag);
     if (idx === -1 || idx + 1 >= args.length) {
       log.error(`Missing required argument: ${chalk.bold(flag)}`);
-      log.dim(`Run ${chalk.cyan('npx tsx claw-cli.ts help')} for usage info`);
+      log.dim(`Run ${chalk.cyan('clawduel-cli help')} for usage info`);
       process.exit(1);
     }
     return args[idx + 1];
@@ -679,8 +966,18 @@ async function main() {
     case 'balance':
       await cmdBalance();
       break;
-    case 'queue':
-      await cmdQueue(parseFloat(getArg('--bet-tier')));
+    case 'queue': {
+      const optArg = (flag: string): string | undefined => {
+        const idx = args.indexOf(flag);
+        return idx !== -1 && idx + 1 < args.length ? args[idx + 1] : undefined;
+      };
+      const timeoutStr = optArg('--timeout');
+      const timeout = timeoutStr ? parseInt(timeoutStr, 10) : 3600;
+      await cmdQueue(parseFloat(getArg('--bet-tier')), timeout);
+      break;
+    }
+    case 'dequeue':
+      await cmdDequeue(parseFloat(getArg('--bet-tier')));
       break;
     case 'poll':
       await cmdPoll();
@@ -708,25 +1005,16 @@ async function main() {
     case 'match':
       await cmdMatch(getArg('--id'));
       break;
-    case 'help':
-    case '--help':
-    case '-h':
-      showHelp();
-      break;
     default:
-      if (!cmd) {
-        showHelp();
-      } else {
-        log.error(`Unknown command: ${chalk.bold(cmd)}`);
-        log.dim(`Run ${chalk.cyan('npx tsx claw-cli.ts help')} for available commands`);
-        process.exit(1);
-      }
+      log.error(`Unknown command: ${chalk.bold(cmd)}`);
+      log.dim(`Run ${chalk.cyan('clawduel-cli help')} for available commands`);
+      process.exit(1);
   }
 }
 
 main().catch(err => {
   // Redact secrets from error messages and stack traces before logging
-  const safeMessage = redactSecrets(err.message || String(err), PK);
+  const safeMessage = redactSecrets(err.message || String(err), PK || undefined);
   log.error(safeMessage);
   console.error(JSON.stringify({ error: safeMessage }));
   process.exit(1);
