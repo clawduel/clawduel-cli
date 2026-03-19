@@ -1,6 +1,7 @@
 //! Interactive shell mode with rustyline readline and history support.
 
 use clap::Parser as _;
+use clawduel_cli::output::OutputFormat;
 
 pub async fn run_shell() -> anyhow::Result<()> {
     println!();
@@ -39,13 +40,13 @@ pub async fn run_shell() -> anyhow::Result<()> {
                         let output = cli.output;
                         if let Err(e) = crate::run(cli).await {
                             match output {
-                                crate::output::OutputFormat::Json => {
+                                OutputFormat::Json => {
                                     println!(
                                         "{}",
                                         serde_json::json!({"error": e.to_string()})
                                     );
                                 }
-                                crate::output::OutputFormat::Table => {
+                                OutputFormat::Table => {
                                     eprintln!("Error: {e:#}");
                                 }
                             }

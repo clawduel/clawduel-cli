@@ -135,7 +135,7 @@ pub async fn run(cli: Cli) -> anyhow::Result<()> {
             }
         }
         Commands::Shell => {
-            return crate::shell::run_shell().await;
+            return Box::pin(crate::shell::run_shell()).await;
         }
         Commands::Upgrade => {
             return commands::upgrade::execute(fmt);
