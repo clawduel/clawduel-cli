@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Rust Rewrite
 status: executing
-stopped_at: Completed 04-02-PLAN.md
-last_updated: "2026-03-19T22:26:18.000Z"
+stopped_at: Completed 05-01-PLAN.md
+last_updated: "2026-03-19T22:41:00.000Z"
 progress:
   total_phases: 3
-  completed_phases: 1
-  total_plans: 2
-  completed_plans: 2
+  completed_phases: 2
+  total_plans: 3
+  completed_plans: 3
 ---
 
 # Project State
@@ -19,14 +19,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-19)
 
 **Core value:** A Claude Code agent can go from zero to completing a full ClawDuel match autonomously
-**Current focus:** Phase 4 - Foundation (v2.0 Rust Rewrite)
+**Current focus:** Phase 5 - Command Port (v2.0 Rust Rewrite) -- COMPLETE
 
 ## Current Position
 
-Phase: 4 of 6 (Foundation) -- COMPLETE
-Plan: All plans complete (04-01, 04-02)
-Status: Phase 4 complete, ready for Phase 5
-Last activity: 2026-03-19 -- Completed 04-02 (security + auth + HTTP client)
+Phase: 5 of 7 (Command Port) -- COMPLETE
+Plan: All plans complete (05-01)
+Status: Phase 5 complete, ready for Phase 6
+Last activity: 2026-03-19 -- Completed 05-01 (port all CLI commands)
 
 Progress: [██████████] 100%
 
@@ -42,6 +42,7 @@ Progress: [██████████] 100%
 |-------|------|----------|-------|-------|
 | 04    | 01   | 9 min    | 2     | 9     |
 | 04    | 02   | 7 min    | 2     | 7     |
+| 05    | 01   | 11 min   | 6     | 16    |
 
 ## Accumulated Context
 
@@ -62,6 +63,10 @@ Recent decisions affecting current work:
 - [04-02]: Used LazyLock<Regex> statics for compiled patterns (no lookbehind in Rust regex)
 - [04-02]: HttpClient validates backend URL once at construction time
 - [04-02]: Raw hex redaction uses boundary-aware Captures since Rust regex lacks lookbehind
+- [05-01]: Used sol! macro with #[sol(rpc)] for contract ABIs
+- [05-01]: Computed EIP-712 hash via SolStruct::eip712_signing_hash then sign_hash
+- [05-01]: Upgraded alloy 1.6.3 -> 1.7.3 for contract/provider sub-crate availability
+- [05-01]: Manual ISO 8601 parser for poll wait times (avoids chrono dependency)
 
 ### Pending Todos
 
@@ -78,6 +83,6 @@ None yet.
 
 ## Session Continuity
 
-Last activity: 2026-03-19 - Completed 04-02-PLAN.md
-Stopped at: Completed 04-02-PLAN.md, Phase 4 complete, ready for Phase 5
+Last activity: 2026-03-19 - Completed 05-01-PLAN.md
+Stopped at: Completed 05-01-PLAN.md, Phase 5 complete, ready for Phase 6
 Resume file: None

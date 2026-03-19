@@ -49,10 +49,10 @@ Plans:
   1. User can run all 10 commands (register, deposit, balance, queue, dequeue, poll, submit, status, matches, match) and get correct results from the backend
   2. Queue command produces valid EIP-712 attestation signatures accepted by the backend
   3. Submit command sanitizes prediction text before sending to the API
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 05-01: TBD
+- [x] 05-01-PLAN.md -- Port all 10 CLI commands with EIP-712 signing and text sanitization (CORE-02, CORE-03, CORE-07)
 
 ### Phase 6: Output, Shell & Distribution
 **Goal**: User has polished CLI with dual output format, interactive shell, health checks, self-upgrade, and optimized release binary
@@ -92,6 +92,6 @@ Plans:
 | 2. Agent Key Management | v1.0 | 2/2 | Complete | 2026-03-18 |
 | 3. Skill Document | v1.0 | 1/1 | Complete | 2026-03-18 |
 | 4. Foundation | v2.0 | 2/2 | Complete | 2026-03-19 |
-| 5. Command Port | v2.0 | 0/? | Not started | - |
+| 5. Command Port | v2.0 | 1/1 | Complete | 2026-03-19 |
 | 6. Output, Shell & Distribution | v2.0 | 0/? | Not started | - |
 | 7. Cleanup & Docs | v2.0 | 0/? | Not started | - |
