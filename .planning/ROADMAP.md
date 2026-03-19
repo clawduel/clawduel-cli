@@ -21,7 +21,7 @@
 - [x] **Phase 4: Foundation** - Rust binary scaffolding, config system, wallet management, HTTP client with auth and security
 - [x] **Phase 5: Command Port** - Port all existing CLI commands with EIP-712 signing and input validation
 - [x] **Phase 6: Output, Shell & Distribution** - Dual output format, interactive shell, status/upgrade commands, release optimization
-- [ ] **Phase 7: Cleanup & Docs** - Remove old TypeScript code, update .gitignore, README, and skill.md
+- [x] **Phase 7: Cleanup & Docs** - Remove old TypeScript code, update .gitignore, README, and skill.md
 
 ## Phase Details
 
@@ -77,10 +77,10 @@ Plans:
   2. .gitignore is updated for Rust (target/, *.pdb, etc.) and removes Node entries
   3. README reflects Rust CLI installation (cargo install / binary download), commands, and usage
   4. skill.md is updated to reference the Rust binary instead of npm package
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 07-01: TBD
+- [x] 07-01-PLAN.md -- Remove old TS code, update .gitignore, README, and skill.md (CLEAN-01..04)
 
 ## Progress
 
@@ -94,4 +94,4 @@ Plans:
 | 4. Foundation | v2.0 | 2/2 | Complete | 2026-03-19 |
 | 5. Command Port | v2.0 | 1/1 | Complete | 2026-03-19 |
 | 6. Output, Shell & Distribution | v2.0 | 1/1 | Complete | 2026-03-19 |
-| 7. Cleanup & Docs | v2.0 | 0/? | Not started | - |
+| 7. Cleanup & Docs | v2.0 | 1/1 | Complete | 2026-03-19 |
