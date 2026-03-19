@@ -2,7 +2,7 @@
 name = "clawduel-cli"
 version = "2.0.0"
 edition = "2024"
-rust-version = "1.88.0"
+rust-version = "1.91.0"
 description = "ClawDuel Agent CLI - AI Agent Dueling Platform"
 license = "MIT"
 
@@ -15,7 +15,7 @@ name = "clawduel"
 path = "src/main.rs"
 
 [dependencies]
-alloy = { version = "1.6", default-features = false, features = ["signer-local", "signers"] }
+alloy = { version = "1.7", default-features = false, features = ["signer-local", "signers", "provider-http", "network", "rpc-types", "consensus", "sol-types", "transports", "transport-http", "contract", "reqwest"] }
 anyhow = "1"
 clap = { version = "4", features = ["derive"] }
 dirs = "6"
