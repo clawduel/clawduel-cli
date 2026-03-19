@@ -3,6 +3,7 @@
 use anyhow::Result;
 
 use crate::http::HttpClient;
+use crate::output::OutputFormat;
 use crate::security;
 
 /// Submit a prediction for the given match.
@@ -13,46 +14,51 @@ use crate::security;
 /// - Tabs converted to spaces
 /// - Multiple spaces collapsed
 /// - Consecutive newlines limited to 2
-pub async fn execute(client: &HttpClient, match_id: &str, prediction: &str) -> Result<()> {
+pub async fn execute(
+    client: &HttpClient,
+    match_id: &str,
+    prediction: &str,
+    fmt: OutputFormat,
+) -> Result<()> {
     let sanitized = sanitize_prediction(prediction);
     let safe_id = security::sanitize_path_segment(match_id);
 
-    println!("Submitting prediction for match {safe_id}...");
-
-    if sanitized != prediction.trim() {
-        println!("  (Prediction text was sanitized for submission)");
+    if matches!(fmt, OutputFormat::Table) {
+        println!("Submitting prediction for match {safe_id}...");
+        if sanitized != prediction.trim() {
+            println!("  (Prediction text was sanitized for submission)");
+        }
     }
 
     let body = serde_json::json!({ "prediction": sanitized });
-    let (status, response) = client.post(&format!("/matches/{safe_id}/submit"), &body).await?;
-
-    if (200..300).contains(&status) {
-        println!("OK: Prediction submitted");
-    } else {
-        let error = response
-            .get("error")
-            .and_then(|e| e.as_str())
-            .unwrap_or("Unknown error");
-        eprintln!("Submission failed ({status}): {error}");
-    }
+    let (status, response) = client
+        .post(&format!("/matches/{safe_id}/submit"), &body)
+        .await?;
 
     let mut output = response.clone();
     output["status"] = serde_json::json!(status);
-    println!("{}", serde_json::to_string(&output)?);
+
+    match fmt {
+        OutputFormat::Json => {
+            crate::output::print_json(&output)?;
+        }
+        OutputFormat::Table => {
+            if (200..300).contains(&status) {
+                println!("OK: Prediction submitted");
+            } else {
+                let error = response
+                    .get("error")
+                    .and_then(|e| e.as_str())
+                    .unwrap_or("Unknown error");
+                eprintln!("Submission failed ({status}): {error}");
+            }
+        }
+    }
 
     Ok(())
 }
 
 /// Sanitize prediction text before submission.
-///
-/// Matches the TypeScript CLI behavior:
-/// 1. Trim
-/// 2. Remove control chars (keep \n, \r, \t)
-/// 3. Normalize line endings (\r\n -> \n, \r -> \n)
-/// 4. Tabs to spaces
-/// 5. Collapse multiple spaces
-/// 6. Max 2 consecutive newlines
-/// 7. Final trim
 fn sanitize_prediction(raw: &str) -> String {
     let mut s = raw.trim().to_string();
 

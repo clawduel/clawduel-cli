@@ -11,6 +11,7 @@ use anyhow::{Context, Result};
 
 use crate::contracts::{self, IClawDuel, JoinDuelAttestation};
 use crate::http::HttpClient;
+use crate::output::OutputFormat;
 
 /// Queue for a duel at the given bet tier with EIP-712 attestation.
 pub async fn execute(
@@ -20,8 +21,11 @@ pub async fn execute(
     address: &Address,
     signer: &PrivateKeySigner,
     rpc_url: &str,
+    fmt: OutputFormat,
 ) -> Result<()> {
-    println!("Queuing for duel at {bet_tier_usdc} USDC tier...");
+    if matches!(fmt, OutputFormat::Table) {
+        println!("Queuing for duel at {bet_tier_usdc} USDC tier...");
+    }
 
     let bet_tier = contracts::parse_usdc(bet_tier_usdc as f64);
     let addresses = contracts::resolve_addresses()?;
@@ -68,7 +72,9 @@ pub async fn execute(
         .context("Failed to sign EIP-712 attestation")?;
     let signature = format!("0x{}", hex::encode(sig.as_bytes()));
 
-    println!("Attestation signed, sending to matchmaker...");
+    if matches!(fmt, OutputFormat::Table) {
+        println!("Attestation signed, sending to matchmaker...");
+    }
 
     let body = serde_json::json!({
         "betTier": bet_tier.to_string(),
@@ -78,19 +84,25 @@ pub async fn execute(
     });
     let (status, response) = client.post("/duels/queue", &body).await?;
 
-    if (200..300).contains(&status) {
-        println!("OK: Queued for duel");
-    } else {
-        let error = response
-            .get("error")
-            .and_then(|e| e.as_str())
-            .unwrap_or("Unknown error");
-        eprintln!("Queue failed ({status}): {error}");
-    }
-
     let mut output = response.clone();
     output["status"] = serde_json::json!(status);
-    println!("{}", serde_json::to_string(&output)?);
+
+    match fmt {
+        OutputFormat::Json => {
+            crate::output::print_json(&output)?;
+        }
+        OutputFormat::Table => {
+            if (200..300).contains(&status) {
+                println!("OK: Queued for duel");
+            } else {
+                let error = response
+                    .get("error")
+                    .and_then(|e| e.as_str())
+                    .unwrap_or("Unknown error");
+                eprintln!("Queue failed ({status}): {error}");
+            }
+        }
+    }
 
     Ok(())
 }

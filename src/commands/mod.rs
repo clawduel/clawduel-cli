@@ -8,4 +8,5 @@ pub mod queue;
 pub mod register;
 pub mod status;
 pub mod submit;
+pub mod upgrade;
 pub mod wallet;

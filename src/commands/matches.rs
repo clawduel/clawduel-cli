@@ -1,8 +1,10 @@
 //! List matches with optional filters.
 
 use anyhow::Result;
+use tabled::Tabled;
 
 use crate::http::HttpClient;
+use crate::output::OutputFormat;
 
 /// Query parameters for match listing.
 pub struct MatchFilters {
@@ -13,8 +15,24 @@ pub struct MatchFilters {
     pub to: Option<String>,
 }
 
+#[derive(Tabled, serde::Serialize)]
+struct MatchRow {
+    #[tabled(rename = "ID")]
+    id: String,
+    #[tabled(rename = "Type")]
+    kind: String,
+    #[tabled(rename = "Status")]
+    status: String,
+    #[tabled(rename = "Bet Size")]
+    bet_size: String,
+    #[tabled(rename = "Category")]
+    category: String,
+    #[tabled(rename = "Winner")]
+    winner: String,
+}
+
 /// List matches with optional filters.
-pub async fn execute(client: &HttpClient, filters: MatchFilters) -> Result<()> {
+pub async fn execute(client: &HttpClient, filters: MatchFilters, fmt: OutputFormat) -> Result<()> {
     let mut params = Vec::new();
     if let Some(ref s) = filters.status {
         params.push(format!("status={s}"));
@@ -46,53 +64,58 @@ pub async fn execute(client: &HttpClient, filters: MatchFilters) -> Result<()> {
         .cloned()
         .unwrap_or_default();
 
-    let formatted: Vec<serde_json::Value> = results
-        .iter()
-        .map(|m| {
-            serde_json::json!({
-                "id": m.get("id"),
-                "type": m.get("type"),
-                "status": m.get("status"),
-                "agents": m.get("agents"),
-                "betSize": m.get("betSize"),
-                "problemCategory": m.get("problemCategory"),
-                "winner": m.get("winner"),
-                "timestamp": m.get("timestamp"),
-            })
-        })
-        .collect();
-
-    let count = formatted.len();
-    if count == 0 {
-        if filters.status.is_some() {
-            println!(
-                "No {} matches found",
-                filters.status.as_deref().unwrap_or("")
-            );
-        } else {
-            println!("No matches found");
+    match fmt {
+        OutputFormat::Json => {
+            let output = serde_json::json!({
+                "page": data.get("page"),
+                "pageSize": data.get("pageSize"),
+                "total": data.get("total"),
+                "count": results.len(),
+                "matches": results,
+            });
+            crate::output::print_json(&output)?;
         }
-    } else {
-        let page = data.get("page").and_then(|p| p.as_u64()).unwrap_or(0);
-        let total = data
-            .get("total")
-            .map(|t| t.to_string())
-            .unwrap_or_else(|| "?".to_string());
-        println!(
-            "Found {count} match{} (page {page}, total {total})",
-            if count == 1 { "" } else { "es" }
-        );
+        OutputFormat::Table => {
+            let rows: Vec<MatchRow> = results
+                .iter()
+                .map(|m| MatchRow {
+                    id: json_str(m, "id"),
+                    kind: json_str(m, "type"),
+                    status: json_str(m, "status"),
+                    bet_size: json_str(m, "betSize"),
+                    category: json_str(m, "problemCategory"),
+                    winner: json_str(m, "winner"),
+                })
+                .collect();
+
+            let count = rows.len();
+            let page = data.get("page").and_then(|p| p.as_u64()).unwrap_or(0);
+            let total = data
+                .get("total")
+                .map(|t| t.to_string())
+                .unwrap_or_else(|| "?".to_string());
+
+            if count == 0 {
+                println!("No matches found");
+            } else {
+                println!(
+                    "Found {count} match{} (page {page}, total {total})",
+                    if count == 1 { "" } else { "es" }
+                );
+                crate::output::print_table(&rows);
+            }
+        }
     }
 
-    let output = serde_json::json!({
-        "page": data.get("page"),
-        "pageSize": data.get("pageSize"),
-        "total": data.get("total"),
-        "count": count,
-        "matches": formatted,
-    });
-
-    println!("{}", serde_json::to_string_pretty(&output)?);
-
     Ok(())
+}
+
+fn json_str(val: &serde_json::Value, key: &str) -> String {
+    val.get(key)
+        .map(|v| match v {
+            serde_json::Value::String(s) => s.clone(),
+            serde_json::Value::Null => "-".to_string(),
+            other => other.to_string(),
+        })
+        .unwrap_or_else(|| "-".to_string())
 }

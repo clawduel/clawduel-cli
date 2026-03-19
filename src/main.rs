@@ -1,7 +1,7 @@
 use std::process::ExitCode;
 
 use clap::{Parser, Subcommand};
-use clawduel_cli::{commands, config, http::HttpClient, wallet};
+use clawduel_cli::{commands, config, http::HttpClient, output::OutputFormat, wallet};
 
 #[derive(Parser)]
 #[command(name = "clawduel", about = "ClawDuel Agent CLI - AI Agent Dueling Platform", version)]
@@ -12,6 +12,10 @@ pub struct Cli {
     /// Select agent wallet by address (overrides CLAW_AGENT_ADDRESS env var)
     #[arg(long, global = true)]
     agent: Option<String>,
+
+    /// Output format: table or json
+    #[arg(short, long, global = true, default_value = "table")]
+    pub output: OutputFormat,
 }
 
 #[derive(Subcommand)]
@@ -91,26 +95,52 @@ enum Commands {
         #[arg(long)]
         id: String,
     },
+
+    /// Launch interactive shell
+    Shell,
+
+    /// Update to the latest version
+    Upgrade,
 }
 
 #[tokio::main]
 async fn main() -> ExitCode {
     let cli = Cli::parse();
+    let output = cli.output;
 
     if let Err(e) = run(cli).await {
-        eprintln!("Error: {e:#}");
+        match output {
+            OutputFormat::Json => {
+                println!("{}", serde_json::json!({"error": e.to_string()}));
+            }
+            OutputFormat::Table => {
+                eprintln!("Error: {e:#}");
+            }
+        }
         return ExitCode::FAILURE;
     }
 
     ExitCode::SUCCESS
 }
 
-async fn run(cli: Cli) -> anyhow::Result<()> {
+pub async fn run(cli: Cli) -> anyhow::Result<()> {
     let agent = cli.agent.as_deref();
+    let fmt = cli.output;
 
-    // Wallet command doesn't need a loaded wallet
-    if let Commands::Wallet(args) = cli.command {
-        return commands::wallet::execute(args, agent).await;
+    // Commands that don't need a wallet
+    match &cli.command {
+        Commands::Wallet(_) => {
+            if let Commands::Wallet(args) = cli.command {
+                return commands::wallet::execute(args, agent).await;
+            }
+        }
+        Commands::Shell => {
+            return crate::shell::run_shell().await;
+        }
+        Commands::Upgrade => {
+            return commands::upgrade::execute(fmt);
+        }
+        _ => {}
     }
 
     // All other commands require a wallet
@@ -124,34 +154,34 @@ async fn run(cli: Cli) -> anyhow::Result<()> {
     let rpc_url = config::resolve_rpc_url(None);
 
     match cli.command {
-        Commands::Wallet(_) => unreachable!(),
+        Commands::Wallet(_) | Commands::Shell | Commands::Upgrade => unreachable!(),
 
         Commands::Register { nickname } => {
             let client = HttpClient::new(&backend_url, signer, address, &private_key_hex)?;
-            commands::register::execute(&client, &nickname).await
+            commands::register::execute(&client, &nickname, fmt).await
         }
 
         Commands::Deposit { amount } => {
-            commands::deposit::execute(amount, &address, &signer, &rpc_url).await
+            commands::deposit::execute(amount, &address, &signer, &rpc_url, fmt).await
         }
 
-        Commands::Balance => {
-            commands::balance::execute(&address, &rpc_url).await
-        }
+        Commands::Balance => commands::balance::execute(&address, &rpc_url, fmt).await,
 
         Commands::Queue { bet_tier, timeout } => {
-            let client = HttpClient::new(&backend_url, signer.clone(), address, &private_key_hex)?;
-            commands::queue::execute(&client, bet_tier, timeout, &address, &signer, &rpc_url).await
+            let client =
+                HttpClient::new(&backend_url, signer.clone(), address, &private_key_hex)?;
+            commands::queue::execute(&client, bet_tier, timeout, &address, &signer, &rpc_url, fmt)
+                .await
         }
 
         Commands::Dequeue { bet_tier } => {
             let client = HttpClient::new(&backend_url, signer, address, &private_key_hex)?;
-            commands::dequeue::execute(&client, bet_tier).await
+            commands::dequeue::execute(&client, bet_tier, fmt).await
         }
 
         Commands::Poll => {
             let client = HttpClient::new(&backend_url, signer, address, &private_key_hex)?;
-            commands::poll::execute(&client, &address).await
+            commands::poll::execute(&client, &address, fmt).await
         }
 
         Commands::Submit {
@@ -159,12 +189,12 @@ async fn run(cli: Cli) -> anyhow::Result<()> {
             prediction,
         } => {
             let client = HttpClient::new(&backend_url, signer, address, &private_key_hex)?;
-            commands::submit::execute(&client, &match_id, &prediction).await
+            commands::submit::execute(&client, &match_id, &prediction, fmt).await
         }
 
         Commands::Status => {
             let client = HttpClient::new(&backend_url, signer, address, &private_key_hex)?;
-            commands::status::execute(&client, &address, &rpc_url).await
+            commands::status::execute(&client, &address, &rpc_url, fmt).await
         }
 
         Commands::Matches {
@@ -182,12 +212,14 @@ async fn run(cli: Cli) -> anyhow::Result<()> {
                 from,
                 to,
             };
-            commands::matches::execute(&client, filters).await
+            commands::matches::execute(&client, filters, fmt).await
         }
 
         Commands::Match { id } => {
             let client = HttpClient::new(&backend_url, signer, address, &private_key_hex)?;
-            commands::match_detail::execute(&client, &id).await
+            commands::match_detail::execute(&client, &id, fmt).await
         }
     }
 }
+
+mod shell;

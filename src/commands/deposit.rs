@@ -5,6 +5,7 @@ use alloy::signers::local::PrivateKeySigner;
 use anyhow::{Result, bail};
 
 use crate::contracts::{self, IERC20, IBank};
+use crate::output::OutputFormat;
 
 /// Deposit USDC: approve then deposit to the bank.
 pub async fn execute(
@@ -12,8 +13,11 @@ pub async fn execute(
     address: &Address,
     signer: &PrivateKeySigner,
     rpc_url: &str,
+    fmt: OutputFormat,
 ) -> Result<()> {
-    println!("Depositing {amount_usdc} USDC...");
+    if matches!(fmt, OutputFormat::Table) {
+        println!("Depositing {amount_usdc} USDC...");
+    }
 
     let amount = contracts::parse_usdc(amount_usdc);
     let addresses = contracts::resolve_addresses()?;
@@ -35,20 +39,29 @@ pub async fn execute(
     }
 
     // Approve
-    println!("Approving USDC...");
+    if matches!(fmt, OutputFormat::Table) {
+        println!("Approving USDC...");
+    }
     let tx1 = usdc.approve(addresses.bank, amount).send().await?;
     let _receipt1 = tx1.watch().await?;
 
     // Deposit
-    println!("Depositing to Bank...");
+    if matches!(fmt, OutputFormat::Table) {
+        println!("Depositing to Bank...");
+    }
     let tx2 = bank.deposit(amount).send().await?;
     let _receipt2 = tx2.watch().await?;
 
-    println!("OK: Deposited {amount_usdc} USDC");
-    println!(
-        "{}",
-        serde_json::json!({ "ok": true, "deposited": amount_usdc })
-    );
+    let data = serde_json::json!({ "ok": true, "deposited": amount_usdc });
+
+    match fmt {
+        OutputFormat::Json => {
+            crate::output::print_json(&data)?;
+        }
+        OutputFormat::Table => {
+            println!("OK: Deposited {amount_usdc} USDC");
+        }
+    }
 
     Ok(())
 }

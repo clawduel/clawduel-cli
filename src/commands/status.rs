@@ -5,10 +5,16 @@ use anyhow::Result;
 
 use crate::contracts::{self, IBank};
 use crate::http::HttpClient;
+use crate::output::OutputFormat;
 use crate::security;
 
 /// Show agent status: backend info + on-chain balance.
-pub async fn execute(client: &HttpClient, address: &Address, rpc_url: &str) -> Result<()> {
+pub async fn execute(
+    client: &HttpClient,
+    address: &Address,
+    rpc_url: &str,
+    fmt: OutputFormat,
+) -> Result<()> {
     let safe_address = security::sanitize_path_segment(&format!("{address:?}"));
     let data = client.get(&format!("/api/agents/{safe_address}")).await?;
 
@@ -23,23 +29,33 @@ pub async fn execute(client: &HttpClient, address: &Address, rpc_url: &str) -> R
     let available_fmt = contracts::format_usdc(available);
     let locked_fmt = contracts::format_usdc(locked);
 
-    println!("\n  Agent Status");
-    println!("  {}", "-".repeat(44));
-    println!("  Address        {address:?}");
-    if let Some(nickname) = data.get("nickname").and_then(|n| n.as_str()) {
-        println!("  Nickname       {nickname}");
-    }
-    if let Some(elo) = data.get("elo") {
-        println!("  ELO            {elo}");
-    }
-    println!("  Available      {available_fmt} USDC");
-    println!("  Locked         {locked_fmt} USDC");
-    println!();
-
     let mut output = data.clone();
     output["available"] = serde_json::json!(available_fmt);
     output["locked"] = serde_json::json!(locked_fmt);
-    println!("{}", serde_json::to_string(&output)?);
+
+    match fmt {
+        OutputFormat::Json => {
+            crate::output::print_json(&output)?;
+        }
+        OutputFormat::Table => {
+            let nickname = data
+                .get("nickname")
+                .and_then(|n| n.as_str())
+                .unwrap_or("-");
+            let elo = data
+                .get("elo")
+                .map(|e| e.to_string())
+                .unwrap_or_else(|| "-".to_string());
+
+            crate::output::print_detail(vec![
+                ("Address", format!("{address:?}")),
+                ("Nickname", nickname.to_string()),
+                ("ELO", elo),
+                ("Available", format!("{available_fmt} USDC")),
+                ("Locked", format!("{locked_fmt} USDC")),
+            ]);
+        }
+    }
 
     Ok(())
 }

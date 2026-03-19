@@ -3,16 +3,19 @@
 use anyhow::Result;
 
 use crate::http::HttpClient;
+use crate::output::OutputFormat;
 use crate::security;
 
 /// Show details for a single match.
-pub async fn execute(client: &HttpClient, match_id: &str) -> Result<()> {
+pub async fn execute(client: &HttpClient, match_id: &str, fmt: OutputFormat) -> Result<()> {
     let safe_id = security::sanitize_path_segment(match_id);
     let data = client.get(&format!("/api/matches/{safe_id}")).await?;
 
     if let Some(error) = data.get("error").and_then(|e| e.as_str()) {
         eprintln!("Error: {error}");
-        println!("{}", serde_json::to_string(&data)?);
+        if matches!(fmt, OutputFormat::Json) {
+            crate::output::print_json(&data)?;
+        }
         return Ok(());
     }
 
@@ -40,7 +43,10 @@ pub async fn execute(client: &HttpClient, match_id: &str) -> Result<()> {
             .and_then(|p| p.get("agent2"))
             .and_then(|v| v.as_str());
         let actual = data.get("actualValue").and_then(|v| v.as_str());
-        let winner = data.get("winner").cloned().unwrap_or(serde_json::Value::Null);
+        let winner = data
+            .get("winner")
+            .cloned()
+            .unwrap_or(serde_json::Value::Null);
 
         let resolution = compute_resolution(p1, p2, actual, &winner);
         result["resolution"] = resolution;
@@ -50,30 +56,45 @@ pub async fn execute(client: &HttpClient, match_id: &str) -> Result<()> {
         }
     }
 
-    // Print header
-    let match_display = result
-        .get("matchId")
-        .and_then(|v| v.as_str())
-        .unwrap_or(&safe_id);
-    let status_display = result
-        .get("status")
-        .and_then(|v| v.as_str())
-        .unwrap_or("unknown");
-    println!("\n  Match {match_display}");
-    println!("  {}", "-".repeat(44));
-    println!("  Status         {status_display}");
-    if let Some(title) = result.get("problemTitle").and_then(|v| v.as_str()) {
-        println!("  Problem        {title}");
-    }
-    if let Some(bet) = result.get("betSize").and_then(|v| v.as_str()) {
-        println!("  Bet Size       {bet}");
-    }
-    if let Some(w) = result.get("winner").and_then(|v| v.as_str()) {
-        println!("  Winner         {w}");
-    }
-    println!();
+    match fmt {
+        OutputFormat::Json => {
+            crate::output::print_json(&result)?;
+        }
+        OutputFormat::Table => {
+            let match_display = result
+                .get("matchId")
+                .and_then(|v| v.as_str())
+                .unwrap_or(&safe_id);
+            let status_display = result
+                .get("status")
+                .and_then(|v| v.as_str())
+                .unwrap_or("unknown");
 
-    println!("{}", serde_json::to_string_pretty(&result)?);
+            let mut rows = vec![
+                ("Match ID", match_display.to_string()),
+                ("Status", status_display.to_string()),
+            ];
+
+            if let Some(title) = result.get("problemTitle").and_then(|v| v.as_str()) {
+                rows.push(("Problem", title.to_string()));
+            }
+            if let Some(bet) = result.get("betSize").and_then(|v| v.as_str()) {
+                rows.push(("Bet Size", bet.to_string()));
+            }
+            if let Some(w) = result.get("winner").and_then(|v| v.as_str()) {
+                rows.push(("Winner", w.to_string()));
+            }
+            if let Some(verdict) = result
+                .get("resolution")
+                .and_then(|r| r.get("verdict"))
+                .and_then(|v| v.as_str())
+            {
+                rows.push(("Verdict", verdict.to_string()));
+            }
+
+            crate::output::print_detail(rows);
+        }
+    }
 
     Ok(())
 }
@@ -111,7 +132,6 @@ fn compute_resolution(
                     });
                 }
             }
-            // Non-numeric or missing actual
             let verdict = if winner.is_null() || winner.as_str() == Some("") {
                 "DRAW"
             } else {
@@ -132,7 +152,6 @@ fn format_usdc_from_value(value: Option<&serde_json::Value>) -> String {
         Some(v) if v.is_string() => v.as_str().unwrap_or("0").parse::<f64>().unwrap_or(0.0),
         _ => return "0.00 USDC".to_string(),
     };
-    // raw is in atomic units (6 decimals)
     let usdc = raw / 1_000_000.0;
     format!("{usdc:.2} USDC")
 }

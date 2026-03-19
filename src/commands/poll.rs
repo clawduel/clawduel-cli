@@ -5,6 +5,7 @@ use anyhow::Result;
 use url::Url;
 
 use crate::http::HttpClient;
+use crate::output::OutputFormat;
 use crate::security;
 
 /// Poll for the agent's active match.
@@ -13,9 +14,11 @@ use crate::security;
 /// - `waiting_ready`: sends ready signal, waits if `startsAt` is set, then re-polls
 /// - `waiting_start`: waits until `startsAt`, then re-polls
 /// - Other states: prints the data as-is
-pub async fn execute(client: &HttpClient, address: &Address) -> Result<()> {
+pub async fn execute(client: &HttpClient, address: &Address, fmt: OutputFormat) -> Result<()> {
     let safe_address = security::sanitize_path_segment(&format!("{address:?}"));
-    let data = client.get(&format!("/matches/active/{safe_address}")).await?;
+    let data = client
+        .get(&format!("/matches/active/{safe_address}"))
+        .await?;
 
     // Handle ready acknowledgement flow
     if let Some(m) = data.get("match") {
@@ -24,24 +27,25 @@ pub async fn execute(client: &HttpClient, address: &Address) -> Result<()> {
         let problem_is_null = m.get("problem").map_or(true, |p| p.is_null());
 
         if status == "waiting_ready" && ready_url.is_some() && problem_is_null {
-            println!("Match found, sending ready signal...");
+            if matches!(fmt, OutputFormat::Table) {
+                println!("Match found, sending ready signal...");
+            }
 
             let url_str = ready_url.unwrap();
             let parsed = Url::parse(url_str).unwrap_or_else(|_| {
-                // If it's a relative path, just use it directly
                 Url::parse(&format!("http://placeholder{url_str}")).unwrap()
             });
             let path = parsed.path();
 
-            let (resp_status, body) = client
-                .post(path, &serde_json::json!({}))
-                .await?;
+            let (resp_status, body) = client.post(path, &serde_json::json!({})).await?;
 
             if (200..300).contains(&resp_status) {
-                println!("OK: Ready signal sent");
+                if matches!(fmt, OutputFormat::Table) {
+                    println!("OK: Ready signal sent");
+                }
                 if let Some(starts_at) = body.get("startsAt").and_then(|s| s.as_str()) {
                     wait_until(starts_at).await;
-                } else {
+                } else if matches!(fmt, OutputFormat::Table) {
                     println!("Waiting for opponent...");
                 }
             } else {
@@ -56,8 +60,7 @@ pub async fn execute(client: &HttpClient, address: &Address) -> Result<()> {
             let updated = client
                 .get(&format!("/matches/active/{safe_address}"))
                 .await?;
-            println!("{}", serde_json::to_string(&updated)?);
-            return Ok(());
+            return print_poll_result(&updated, fmt);
         }
 
         // Both agents ready, waiting for synchronized start
@@ -69,12 +72,42 @@ pub async fn execute(client: &HttpClient, address: &Address) -> Result<()> {
             let updated = client
                 .get(&format!("/matches/active/{safe_address}"))
                 .await?;
-            println!("{}", serde_json::to_string(&updated)?);
-            return Ok(());
+            return print_poll_result(&updated, fmt);
         }
     }
 
-    println!("{}", serde_json::to_string(&data)?);
+    print_poll_result(&data, fmt)
+}
+
+fn print_poll_result(data: &serde_json::Value, fmt: OutputFormat) -> Result<()> {
+    match fmt {
+        OutputFormat::Json => {
+            crate::output::print_json(data)?;
+        }
+        OutputFormat::Table => {
+            // Extract key fields for table display
+            if let Some(m) = data.get("match") {
+                let match_id = m
+                    .get("id")
+                    .or_else(|| m.get("matchId"))
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("-");
+                let status = m.get("status").and_then(|s| s.as_str()).unwrap_or("-");
+                let problem = m
+                    .get("problemTitle")
+                    .and_then(|t| t.as_str())
+                    .unwrap_or("-");
+
+                crate::output::print_detail(vec![
+                    ("Match ID", match_id.to_string()),
+                    ("Status", status.to_string()),
+                    ("Problem", problem.to_string()),
+                ]);
+            } else {
+                println!("No active match");
+            }
+        }
+    }
     Ok(())
 }
 
@@ -82,7 +115,6 @@ pub async fn execute(client: &HttpClient, address: &Address) -> Result<()> {
 async fn wait_until(starts_at: &str) {
     use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-    // Parse ISO 8601 timestamp
     let target_ms = match parse_iso8601_to_epoch_ms(starts_at) {
         Some(ms) => ms,
         None => return,
@@ -103,8 +135,6 @@ async fn wait_until(starts_at: &str) {
 
 /// Simple ISO 8601 parser to epoch milliseconds.
 fn parse_iso8601_to_epoch_ms(s: &str) -> Option<u64> {
-    // Handle format: "2026-03-19T22:30:00.000Z" or similar
-    // We use a simple approach since we don't want to add chrono dependency
     let s = s.trim().trim_end_matches('Z');
     let parts: Vec<&str> = s.split('T').collect();
     if parts.len() != 2 {
@@ -134,11 +164,9 @@ fn parse_iso8601_to_epoch_ms(s: &str) -> Option<u64> {
         0
     };
 
-    // Simple days-since-epoch calculation (approximate but sufficient for wait times)
     let (year, month, day) = (date_parts[0], date_parts[1], date_parts[2]);
     let (hour, min, sec) = (hms[0], hms[1], hms[2]);
 
-    // Use a simple epoch calculation
     let days = days_from_civil(year as i64, month as u32, day as u32);
     let epoch_secs = days as u64 * 86400 + hour * 3600 + min * 60 + sec;
 
