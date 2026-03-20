@@ -1,6 +1,7 @@
 pub mod balance;
 pub mod dequeue;
 pub mod deposit;
+pub mod lobby;
 pub mod match_detail;
 pub mod matches;
 pub mod poll;

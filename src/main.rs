@@ -118,6 +118,9 @@ enum Commands {
         wait_timeout: u64,
     },
 
+    /// Multi-duel lobby management
+    Lobby(commands::lobby::LobbyArgs),
+
     /// Launch interactive shell
     Shell,
 
@@ -264,6 +267,12 @@ pub async fn run(cli: Cli) -> anyhow::Result<()> {
                 wait_timeout,
             )
             .await
+        }
+
+        Commands::Lobby(args) => {
+            let client =
+                HttpClient::new(&backend_url, signer.clone(), address, &private_key_hex)?;
+            commands::lobby::execute(args, &client, &address, &signer, &rpc_url, fmt).await
         }
     }
 }
