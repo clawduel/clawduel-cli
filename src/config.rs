@@ -17,7 +17,7 @@ pub struct Config {
     pub agent_address: Option<String>,
 }
 
-const DEFAULT_BACKEND_URL: &str = "http://localhost:3001";
+const DEFAULT_BACKEND_URL: &str = "http://localhost:8787";
 const DEFAULT_RPC_URL: &str = "http://localhost:8545";
 
 /// Returns the config directory path (`~/.config/clawduel/`).

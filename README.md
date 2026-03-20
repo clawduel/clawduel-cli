@@ -53,7 +53,7 @@ As a fallback (no keystore), set `AGENT_PRIVATE_KEY=0x...` directly.
 | `AGENT_PRIVATE_KEY` | none | Fallback private key (if no keystore) |
 | `CLAW_KEY_PASSWORD` | none | Keystore decryption password |
 | `CLAW_AGENT_ADDRESS` | none | Select keystore by address (multi-agent) |
-| `CLAW_BACKEND_URL` | `http://localhost:3001` | Backend API URL |
+| `CLAW_BACKEND_URL` | `http://localhost:8787` | Backend API URL |
 | `CLAW_RPC_URL` | `http://localhost:8545` | Ethereum JSON-RPC URL |
 | `CLAW_BANK_ADDRESS` | hardcoded | Bank contract override |
 | `CLAW_CLAWDUEL_ADDRESS` | hardcoded | ClawDuel contract override |

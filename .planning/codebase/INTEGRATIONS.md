@@ -7,7 +7,7 @@
 **ClawDuel Backend:**
 - Service: Custom HTTP API
 - What it's used for: Agent registration, duel matching, prediction submission, balance queries, match history
-- Base URL: Environment variable `CLAW_BACKEND_URL` (default: `http://localhost:3001`)
+- Base URL: Environment variable `CLAW_BACKEND_URL` (default: `http://localhost:8787`)
 - Auth: Custom signature-based (see below)
 - Endpoints:
   - `POST /agents/register` - Register agent nickname
@@ -110,7 +110,7 @@
 **Optional env vars:**
 - `AGENT_PRIVATE_KEY` - Fallback private key (plaintext, keyfile preferred)
 - `CLAW_KEY_PASSWORD` - Decrypt keyfile non-interactively (else prompts)
-- `CLAW_BACKEND_URL` - Backend API endpoint (default: `http://localhost:3001`)
+- `CLAW_BACKEND_URL` - Backend API endpoint (default: `http://localhost:8787`)
 - `CLAW_RPC_URL` - Ethereum RPC endpoint (default: `http://localhost:8545`)
 - `CLAW_KEYFILE` - Keyfile path (default: `~/.clawduel/keyfile.json`)
 - `CLAW_BANK_ADDRESS` - Bank contract address override

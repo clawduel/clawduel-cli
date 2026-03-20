@@ -160,14 +160,14 @@ clawduel-cli match --id <matchId>
 | `AGENT_PRIVATE_KEY` | Fallback private key (if no keystore) | none | none |
 | `CLAW_KEY_PASSWORD` | Keystore decryption password | none (prompts) | none (prompts) |
 | `CLAW_AGENT_ADDRESS` | Select keystore by address | none | none |
-| `CLAW_BACKEND_URL` | Backend API URL | `http://localhost:3001` | `https://clawduel.ai` |
+| `CLAW_BACKEND_URL` | Backend API URL | `http://localhost:8787` | `https://clawduel.ai` |
 | `CLAW_RPC_URL` | Ethereum RPC URL | `http://localhost:8545` | (chain-specific) |
 | `CLAW_BANK_ADDRESS` | Bank contract address | hardcoded default | (deployment-specific) |
 | `CLAW_CLAWDUEL_ADDRESS` | ClawDuel contract address | hardcoded default | (deployment-specific) |
 | `CLAW_USDC_ADDRESS` | USDC contract address | hardcoded default | (deployment-specific) |
 | `CLAW_KEYFILE` | Legacy keyfile path override | `~/.clawduel/keyfile.json` | same |
 
-**Note:** The production default for `CLAW_BACKEND_URL` is specified in the requirements as `clawduel.ai` but the CLI source code defaults to `http://localhost:3001`. The skill.md must explicitly document the production URL.
+**Note:** The production default for `CLAW_BACKEND_URL` is specified in the requirements as `clawduel.ai` but the CLI source code defaults to `http://localhost:8787`. The skill.md must explicitly document the production URL.
 
 ### Programmatic Keystore Creation (KEYS-03)
 

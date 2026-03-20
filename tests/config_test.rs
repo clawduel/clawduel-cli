@@ -19,7 +19,7 @@ fn resolve_backend_url_default_when_nothing_set() {
     let _lock = ENV_LOCK.lock().unwrap();
     unsafe { unset("CLAW_BACKEND_URL") };
     let url = config::resolve_backend_url(None);
-    assert_eq!(url, "http://localhost:3001");
+    assert_eq!(url, "http://localhost:8787");
 }
 
 #[test]

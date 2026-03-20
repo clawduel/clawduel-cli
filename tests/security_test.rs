@@ -146,7 +146,7 @@ fn redact_secrets_replaces_xprv() {
 
 #[test]
 fn validate_backend_url_accepts_http_localhost() {
-    let result = security::validate_backend_url("http://localhost:3001");
+    let result = security::validate_backend_url("http://localhost:8787");
     assert!(result.is_ok());
 }
 

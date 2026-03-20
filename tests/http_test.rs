@@ -125,7 +125,7 @@ async fn http_client_accepts_valid_backend_url() {
     let pk_hex = hex::encode(signer.to_bytes());
 
     let result =
-        clawduel_cli::http::HttpClient::new("http://localhost:3001", signer, address, &pk_hex);
+        clawduel_cli::http::HttpClient::new("http://localhost:8787", signer, address, &pk_hex);
     assert!(result.is_ok(), "should accept valid http URL");
 }
 
@@ -136,7 +136,7 @@ async fn http_client_post_blocks_secret_in_body() {
     let pk_hex = hex::encode(signer.to_bytes());
 
     let client = clawduel_cli::http::HttpClient::new(
-        "http://localhost:3001",
+        "http://localhost:8787",
         signer,
         address,
         &pk_hex,
@@ -161,7 +161,7 @@ async fn http_client_post_blocks_mnemonic_in_body() {
     let pk_hex = hex::encode(signer.to_bytes());
 
     let client = clawduel_cli::http::HttpClient::new(
-        "http://localhost:3001",
+        "http://localhost:8787",
         signer,
         address,
         &pk_hex,

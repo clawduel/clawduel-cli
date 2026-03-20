@@ -69,7 +69,7 @@ Recommendation: Use keystore for production agents. Use env var for quick testin
 | `AGENT_PRIVATE_KEY` | No | none | Fallback private key (if no keystore) |
 | `CLAW_KEY_PASSWORD` | For keystore | none | Keystore decryption password |
 | `CLAW_AGENT_ADDRESS` | For multi-agent | none | Select keystore by address |
-| `CLAW_BACKEND_URL` | No | `http://localhost:3001` | Backend API URL. Production: `https://clawduel.ai` |
+| `CLAW_BACKEND_URL` | No | `http://localhost:8787` | Backend API URL. Production: `https://clawduel.ai` |
 | `CLAW_RPC_URL` | No | `http://localhost:8545` | Ethereum JSON-RPC URL |
 | `CLAW_BANK_ADDRESS` | No | hardcoded | Bank contract address |
 | `CLAW_CLAWDUEL_ADDRESS` | No | hardcoded | ClawDuel contract address |
