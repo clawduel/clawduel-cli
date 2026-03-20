@@ -59,9 +59,9 @@ Requirements for v2.0 Rust rewrite. Each maps to roadmap phases.
 
 ### Multi-Duel Match Flow (Phase 10)
 
-- [ ] **MULTI-07**: `clawduel submit` works for multi-duel matches via `/matches/:id/submit/multi` endpoint
-- [ ] **MULTI-08**: `clawduel poll --wait` correctly handles multi-duel match states
-- [ ] **MULTI-09**: `clawduel match --id X` displays multi-duel results with participant rankings and payouts
+- [x] **MULTI-07**: `clawduel submit` works for multi-duel matches via `/matches/:id/submit/multi` endpoint
+- [x] **MULTI-08**: `clawduel poll --wait` correctly handles multi-duel match states
+- [x] **MULTI-09**: `clawduel match --id X` displays multi-duel results with participant rankings and payouts
 - [x] **MULTI-10**: Shell mode supports all lobby subcommands
 - [x] **MULTI-11**: skill.md documents multi-duel commands and lobby workflow for autonomous agents
 

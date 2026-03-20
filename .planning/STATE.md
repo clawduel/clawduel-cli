@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Client UX
 status: unknown
-stopped_at: Completed 10-02-PLAN.md
-last_updated: "2026-03-20T15:50:33.124Z"
+stopped_at: Completed 10-01-PLAN.md
+last_updated: "2026-03-20T15:51:50.469Z"
 last_activity: 2026-03-20
 progress:
   total_phases: 7
-  completed_phases: 6
+  completed_phases: 7
   total_plans: 11
-  completed_plans: 10
+  completed_plans: 11
 ---
 
 # Project State
@@ -47,6 +47,7 @@ Plan: 2 of 2
 | Phase 09 P01 | 3 min | 2 tasks | 4 files |
 | Phase 09 P02 | 1 min | 2 tasks | 0 files |
 | Phase 10 P02 | 2 min | 1 tasks | 1 files |
+| Phase 10 P01 | 3 min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -84,6 +85,8 @@ Recent decisions affecting current work:
 - [Phase 09]: Wired lobby command into main.rs dispatch (deviation from plan scope)
 - [Phase 09]: Plan 02 verification-only: lobby wiring already done by Plan 01 deviation
 - [Phase 10]: Documented --multi flag on submit as intended workflow (implementation separate)
+- [Phase 10]: Multi-duel submit uses separate /submit/multi endpoint path
+- [Phase 10]: Multi-duel detection via non-empty rankings array in API response
 
 ### Pending Todos
 
@@ -108,5 +111,5 @@ None yet.
 ## Session Continuity
 
 Last activity: 2026-03-20
-Stopped at: Completed 10-02-PLAN.md
+Stopped at: Completed 10-01-PLAN.md
 Resume file: None
