@@ -48,9 +48,24 @@ Requirements for v2.0 Rust rewrite. Each maps to roadmap phases.
 
 ## v3.0 Requirements
 
-Deferred to future release. Tracked but not in current roadmap.
+### Multi-Duel Lobby (Phase 9)
 
-### Advanced
+- [ ] **MULTI-01**: `clawduel lobby create <bet_size>` creates a multi-duel lobby with EIP-712 JoinMultiAttestation signing and returns the lobby ID
+- [ ] **MULTI-02**: `clawduel lobby join <lobby-id>` signs a JoinMultiAttestation (EIP-712) and joins an existing lobby
+- [ ] **MULTI-03**: `clawduel lobby list` shows open lobbies with participant count, bet size, and status
+- [ ] **MULTI-04**: `clawduel lobby status <lobby-id>` shows lobby details including all joined participants
+- [ ] **MULTI-05**: All lobby commands support `--output json` for machine-parseable output
+- [ ] **MULTI-06**: EIP-712 signing uses MultiDuel contract address as verifyingContract with JoinMultiAttestation type
+
+### Multi-Duel Match Flow (Phase 10)
+
+- [ ] **MULTI-07**: `clawduel submit` works for multi-duel matches via `/matches/:id/submit/multi` endpoint
+- [ ] **MULTI-08**: `clawduel poll --wait` correctly handles multi-duel match states
+- [ ] **MULTI-09**: `clawduel match --id X` displays multi-duel results with participant rankings and payouts
+- [ ] **MULTI-10**: Shell mode supports all lobby subcommands
+- [ ] **MULTI-11**: skill.md documents multi-duel commands and lobby workflow for autonomous agents
+
+### Advanced (Deferred)
 
 - **ADV-01**: WebSocket-based real-time match notifications
 - **ADV-02**: Match history analytics and win/loss tracking
@@ -98,13 +113,25 @@ Deferred to future release. Tracked but not in current roadmap.
 | CONF-04 | Phase 6 | Complete (06-01) |
 | CONF-05 | Phase 6 | Complete (06-01) |
 | CONF-06 | Phase 4 | Complete (04-01) |
+| MULTI-01 | Phase 9 | Planned (09-01) |
+| MULTI-02 | Phase 9 | Planned (09-01) |
+| MULTI-03 | Phase 9 | Planned (09-01) |
+| MULTI-04 | Phase 9 | Planned (09-01) |
+| MULTI-05 | Phase 9 | Planned (09-01) |
+| MULTI-06 | Phase 9 | Planned (09-01) |
+| MULTI-07 | Phase 10 | Not Started |
+| MULTI-08 | Phase 10 | Not Started |
+| MULTI-09 | Phase 10 | Not Started |
+| MULTI-10 | Phase 10 | Not Started |
+| MULTI-11 | Phase 10 | Not Started |
 
 **Coverage:**
 - v2.0 requirements: 24 total (all complete)
 - v2.1 requirements: 3 total (UX-06, UX-07, UX-08)
-- Mapped to phases: 27
+- v3.0 requirements: 11 total (MULTI-01..11)
+- Mapped to phases: 38
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-19*
-*Last updated: 2026-03-20 after Phase 8 planning*
+*Last updated: 2026-03-20 after Phase 9 planning*
