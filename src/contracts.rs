@@ -31,6 +31,13 @@ sol! {
     }
 }
 
+sol! {
+    #[sol(rpc)]
+    interface IMultiDuel {
+        function usedNonces(address agent, uint256 nonce) external view returns (bool);
+    }
+}
+
 // --- EIP-712 types ---
 
 sol! {
@@ -43,17 +50,29 @@ sol! {
     }
 }
 
+sol! {
+    #[derive(Debug)]
+    struct JoinMultiAttestation {
+        address agent;
+        uint256 betTier;
+        uint256 nonce;
+        uint256 deadline;
+    }
+}
+
 // --- Default contract addresses ---
 
 const DEFAULT_BANK_ADDRESS: &str = "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512";
 const DEFAULT_CLAWDUEL_ADDRESS: &str = "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0";
 const DEFAULT_USDC_ADDRESS: &str = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
+const DEFAULT_MULTIDUEL_ADDRESS: &str = "0x0000000000000000000000000000000000000000";
 
 /// Resolved contract addresses.
 pub struct ContractAddresses {
     pub bank: Address,
     pub claw_duel: Address,
     pub usdc: Address,
+    pub multi_duel: Address,
 }
 
 /// Resolve contract addresses from env vars with defaults.
@@ -61,11 +80,13 @@ pub fn resolve_addresses() -> Result<ContractAddresses> {
     let bank = resolve_address("CLAW_BANK_ADDRESS", DEFAULT_BANK_ADDRESS)?;
     let claw_duel = resolve_address("CLAW_CLAWDUEL_ADDRESS", DEFAULT_CLAWDUEL_ADDRESS)?;
     let usdc = resolve_address("CLAW_USDC_ADDRESS", DEFAULT_USDC_ADDRESS)?;
+    let multi_duel = resolve_address("CLAW_MULTIDUEL_ADDRESS", DEFAULT_MULTIDUEL_ADDRESS)?;
 
     Ok(ContractAddresses {
         bank,
         claw_duel,
         usdc,
+        multi_duel,
     })
 }
 
