@@ -20,7 +20,6 @@ pub async fn execute(
     }
 
     let amount = contracts::parse_usdc(amount_usdc);
-    let addresses = contracts::resolve_addresses()?;
 
     // Create a provider with the wallet signer for sending transactions
     let url: reqwest::Url = rpc_url.parse()?;
@@ -28,8 +27,8 @@ pub async fn execute(
         .wallet(alloy::network::EthereumWallet::from(signer.clone()))
         .connect_http(url);
 
-    let usdc = IERC20::new(addresses.usdc, &provider);
-    let bank = IBank::new(addresses.bank, &provider);
+    let usdc = IERC20::new(contracts::usdc_address(), &provider);
+    let bank = IBank::new(contracts::bank_address(), &provider);
 
     // Check USDC balance
     let balance = usdc.balanceOf(*address).call().await?;
@@ -42,7 +41,7 @@ pub async fn execute(
     if matches!(fmt, OutputFormat::Table) {
         println!("Approving USDC...");
     }
-    let tx1 = usdc.approve(addresses.bank, amount).send().await?;
+    let tx1 = usdc.approve(contracts::bank_address(), amount).send().await?;
     let _receipt1 = tx1.watch().await?;
 
     // Deposit

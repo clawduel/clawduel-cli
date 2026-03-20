@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 
@@ -9,16 +10,13 @@ use serde::{Deserialize, Serialize};
 /// Stored at `~/.config/clawduel/config.json`.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct Config {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub backend_url: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub rpc_url: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub agent_address: Option<String>,
+    /// Map of address -> private_key (hex with 0x prefix).
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub wallets: HashMap<String, String>,
 }
 
-const DEFAULT_BACKEND_URL: &str = "http://localhost:8787";
-const DEFAULT_RPC_URL: &str = "http://localhost:8545";
+pub const BACKEND_URL: &str = "http://localhost:8787";
+pub const RPC_URL: &str = "http://localhost:8545";
 
 /// Returns the config directory path (`~/.config/clawduel/`).
 pub fn config_dir() -> Result<PathBuf> {
@@ -34,16 +32,7 @@ pub fn config_path() -> Result<PathBuf> {
 /// Load config from disk. Returns `Ok(None)` if no config file exists.
 pub fn load_config() -> Result<Option<Config>> {
     let path = config_path()?;
-    let data = match fs::read_to_string(&path) {
-        Ok(d) => d,
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(None),
-        Err(e) => {
-            return Err(anyhow::anyhow!(e).context(format!("Failed to read {}", path.display())));
-        }
-    };
-    let config: Config = serde_json::from_str(&data)
-        .context(format!("Invalid JSON in config file {}", path.display()))?;
-    Ok(Some(config))
+    load_config_from(&path)
 }
 
 /// Load config from a specific path (for testing).
@@ -102,38 +91,6 @@ pub fn save_config_to(config: &Config, path: &std::path::Path) -> Result<()> {
     Ok(())
 }
 
-/// Resolve backend URL with priority: flag > env > config file > default.
-pub fn resolve_backend_url(flag: Option<&str>) -> String {
-    resolve_with_priority(flag, "CLAW_BACKEND_URL", |c| c.backend_url.as_deref(), DEFAULT_BACKEND_URL)
-}
-
-/// Resolve RPC URL with priority: flag > env > config file > default.
-pub fn resolve_rpc_url(flag: Option<&str>) -> String {
-    resolve_with_priority(flag, "CLAW_RPC_URL", |c| c.rpc_url.as_deref(), DEFAULT_RPC_URL)
-}
-
-/// Resolve agent address with priority: flag > env > config file > None.
-pub fn resolve_agent_address(flag: Option<&str>) -> Option<String> {
-    if let Some(val) = flag {
-        if !val.is_empty() {
-            return Some(val.to_string());
-        }
-    }
-    if let Ok(val) = std::env::var("CLAW_AGENT_ADDRESS") {
-        if !val.is_empty() {
-            return Some(val);
-        }
-    }
-    if let Ok(Some(config)) = load_config() {
-        if let Some(addr) = config.agent_address {
-            if !addr.is_empty() {
-                return Some(addr);
-            }
-        }
-    }
-    None
-}
-
 /// Returns false if `CLAW_NON_INTERACTIVE=1` or stdin is not a TTY.
 pub fn is_interactive() -> bool {
     if let Ok(val) = std::env::var("CLAW_NON_INTERACTIVE") {
@@ -142,31 +99,4 @@ pub fn is_interactive() -> bool {
         }
     }
     std::io::IsTerminal::is_terminal(&std::io::stdin())
-}
-
-/// Generic priority resolution: flag > env > config > default.
-fn resolve_with_priority(
-    flag: Option<&str>,
-    env_var: &str,
-    config_getter: impl FnOnce(&Config) -> Option<&str>,
-    default: &str,
-) -> String {
-    if let Some(val) = flag {
-        if !val.is_empty() {
-            return val.to_string();
-        }
-    }
-    if let Ok(val) = std::env::var(env_var) {
-        if !val.is_empty() {
-            return val;
-        }
-    }
-    if let Ok(Some(config)) = load_config() {
-        if let Some(val) = config_getter(&config) {
-            if !val.is_empty() {
-                return val.to_string();
-            }
-        }
-    }
-    default.to_string()
 }

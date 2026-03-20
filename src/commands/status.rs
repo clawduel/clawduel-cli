@@ -20,8 +20,7 @@ pub async fn execute(
 
     // Get on-chain balance
     let provider = contracts::create_provider(rpc_url).await?;
-    let addresses = contracts::resolve_addresses()?;
-    let bank = IBank::new(addresses.bank, &provider);
+    let bank = IBank::new(contracts::bank_address(), &provider);
 
     let available = bank.balanceOf(*address).call().await?;
     let locked = bank.lockedBalanceOf(*address).call().await?;

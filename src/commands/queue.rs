@@ -173,11 +173,10 @@ async fn queue_once(
     }
 
     let bet_tier = contracts::parse_usdc(bet_tier_usdc as f64);
-    let addresses = contracts::resolve_addresses()?;
     let provider = contracts::create_provider(rpc_url).await?;
 
     // Generate unused nonce
-    let nonce = generate_nonce(&provider, &addresses.claw_duel, address).await?;
+    let nonce = generate_nonce(&provider, &contracts::claw_duel_address(), address).await?;
 
     // Calculate deadline
     let now_secs = SystemTime::now()
@@ -197,7 +196,7 @@ async fn queue_once(
         name: Some("ClawDuel".into()),
         version: Some("1".into()),
         chain_id: Some(U256::from(chain_id)),
-        verifying_contract: Some(addresses.claw_duel),
+        verifying_contract: Some(contracts::claw_duel_address()),
         salt: None,
     };
 

@@ -1,191 +1,159 @@
-use std::sync::Mutex;
-
 use clawduel_cli::wallet;
 
-// Mutex to serialize env var tests.
-static ENV_LOCK: Mutex<()> = Mutex::new(());
-
-unsafe fn set(var: &str, val: &str) {
-    unsafe { std::env::set_var(var, val) };
-}
-
-unsafe fn unset(var: &str) {
-    unsafe { std::env::remove_var(var) };
-}
+const KEY1: &str = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
+const ADDR1: &str = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266";
+const KEY2: &str = "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d";
+const ADDR2: &str = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8";
 
 #[test]
-fn create_keystore_produces_file_and_returns_address() {
+fn add_and_load_wallet_roundtrip() {
     let dir = tempfile::tempdir().unwrap();
-    let keystores_dir = dir.path().join("keystores");
+    let config_path = dir.path().join("config.json");
 
-    let (address, path) = wallet::create_keystore("test-password", &keystores_dir).unwrap();
+    let address = wallet::add_wallet_to(KEY1, &config_path).unwrap();
+    assert_eq!(address.to_lowercase(), ADDR1.to_lowercase());
 
-    // Address should be a valid hex string
-    assert!(address.starts_with("0x"), "address should start with 0x");
-    assert_eq!(address.len(), 42, "address should be 42 chars");
-
-    // File should exist
-    assert!(path.exists(), "keystore file should exist at {:?}", path);
-
-    // File should be valid JSON
-    let contents = std::fs::read_to_string(&path).unwrap();
-    let _: serde_json::Value = serde_json::from_str(&contents).unwrap();
-}
-
-#[test]
-fn import_keystore_roundtrip() {
-    let dir = tempfile::tempdir().unwrap();
-    let keystores_dir = dir.path().join("keystores");
-
-    // Use a known test private key
-    let test_key = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
-    let password = "test-password";
-
-    let (address, path) = wallet::import_keystore(test_key, password, &keystores_dir).unwrap();
-
-    // Address for this well-known key
+    let signer = wallet::load_wallet_from(&config_path, None).unwrap();
     assert_eq!(
-        address.to_lowercase(),
-        "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",
-        "address should match the known key"
+        format!("{:?}", signer.address()).to_lowercase(),
+        ADDR1.to_lowercase()
     );
+}
 
-    // File should exist
-    assert!(path.exists());
+#[test]
+fn multiple_wallets_and_select_by_agent() {
+    let dir = tempfile::tempdir().unwrap();
+    let config_path = dir.path().join("config.json");
 
-    // Decrypt should yield the same address
-    let decrypted = wallet::decrypt_keystore(&path, password).unwrap();
+    let addr1 = wallet::add_wallet_to(KEY1, &config_path).unwrap();
+    let addr2 = wallet::add_wallet_to(KEY2, &config_path).unwrap();
+
+    // Without --agent should fail (multiple wallets)
+    let result = wallet::load_wallet_from(&config_path, None);
+    assert!(result.is_err());
+
+    // With --agent should select the right one
+    let signer1 = wallet::load_wallet_from(&config_path, Some(&addr1)).unwrap();
     assert_eq!(
-        format!("{:?}", decrypted.address()).to_lowercase(),
-        address.to_lowercase(),
+        format!("{:?}", signer1.address()).to_lowercase(),
+        ADDR1.to_lowercase()
     );
-}
 
-#[test]
-fn select_keystore_auto_selects_single() {
-    let dir = tempfile::tempdir().unwrap();
-    let keystores_dir = dir.path().join("keystores");
-
-    let (address, _) = wallet::create_keystore("pw", &keystores_dir).unwrap();
-
-    let selected = wallet::select_keystore(None, &keystores_dir).unwrap();
-    assert!(selected.is_some(), "should auto-select the only keystore");
-
-    // Verify it matches the address we created
-    let selected_path = selected.unwrap();
-    let filename = selected_path.file_stem().unwrap().to_str().unwrap();
+    let signer2 = wallet::load_wallet_from(&config_path, Some(&addr2)).unwrap();
     assert_eq!(
-        filename.to_lowercase(),
-        address.to_lowercase().trim_start_matches("0x"),
-        "auto-selected keystore should match created address"
+        format!("{:?}", signer2.address()).to_lowercase(),
+        ADDR2.to_lowercase()
     );
 }
 
 #[test]
-fn select_keystore_by_address() {
+fn single_wallet_auto_selects() {
     let dir = tempfile::tempdir().unwrap();
-    let keystores_dir = dir.path().join("keystores");
+    let config_path = dir.path().join("config.json");
 
-    // Create two keystores
-    let (addr1, _) = wallet::create_keystore("pw1", &keystores_dir).unwrap();
-    let (_addr2, _) = wallet::create_keystore("pw2", &keystores_dir).unwrap();
+    wallet::add_wallet_to(KEY1, &config_path).unwrap();
 
-    // Select by first address
-    let selected = wallet::select_keystore(Some(&addr1), &keystores_dir).unwrap();
-    assert!(selected.is_some());
-
-    let selected_path = selected.unwrap();
-    let filename = selected_path.file_stem().unwrap().to_str().unwrap();
+    // Should auto-select the only wallet
+    let signer = wallet::load_wallet_from(&config_path, None).unwrap();
     assert_eq!(
-        filename.to_lowercase(),
-        addr1.to_lowercase().trim_start_matches("0x"),
+        format!("{:?}", signer.address()).to_lowercase(),
+        ADDR1.to_lowercase()
     );
 }
 
 #[test]
-fn select_keystore_unknown_address_errors() {
+fn has_wallet_false_when_no_config() {
     let dir = tempfile::tempdir().unwrap();
-    let keystores_dir = dir.path().join("keystores");
+    let config_path = dir.path().join("config.json");
 
-    let (_addr, _) = wallet::create_keystore("pw", &keystores_dir).unwrap();
-
-    let result = wallet::select_keystore(Some("0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef"), &keystores_dir);
-    assert!(result.is_err(), "should error for unknown address");
+    assert!(!wallet::has_wallet_at(&config_path).unwrap());
 }
 
 #[test]
-fn delete_keystore_removes_file() {
+fn has_wallet_true_after_add() {
     let dir = tempfile::tempdir().unwrap();
-    let keystores_dir = dir.path().join("keystores");
+    let config_path = dir.path().join("config.json");
 
-    let (address, path) = wallet::create_keystore("pw", &keystores_dir).unwrap();
-    assert!(path.exists());
-
-    wallet::delete_keystore(&address, &keystores_dir).unwrap();
-    assert!(!path.exists(), "keystore file should be deleted");
+    wallet::add_wallet_to(KEY1, &config_path).unwrap();
+    assert!(wallet::has_wallet_at(&config_path).unwrap());
 }
 
 #[test]
-fn load_wallet_from_env_var() {
-    let _lock = ENV_LOCK.lock().unwrap();
+fn remove_wallet_by_address() {
     let dir = tempfile::tempdir().unwrap();
-    let keystores_dir = dir.path().join("keystores");
-    // No keystores exist, no legacy keyfile
+    let config_path = dir.path().join("config.json");
 
-    let test_key = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
-    unsafe { set("AGENT_PRIVATE_KEY", test_key) };
+    let addr1 = wallet::add_wallet_to(KEY1, &config_path).unwrap();
+    wallet::add_wallet_to(KEY2, &config_path).unwrap();
 
-    let fake_legacy = dir.path().join("nonexistent-keyfile.json");
-    let signer = wallet::load_wallet(None, None, &keystores_dir, Some(&fake_legacy)).unwrap();
-    let address = format!("{:?}", signer.address());
-    assert_eq!(
-        address.to_lowercase(),
-        "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266"
-    );
+    wallet::remove_wallet_from(&addr1, &config_path).unwrap();
 
-    unsafe { unset("AGENT_PRIVATE_KEY") };
+    let wallets = wallet::list_wallets_from(&config_path).unwrap();
+    assert_eq!(wallets.len(), 1);
+    assert!(!wallets.iter().any(|a| a.to_lowercase() == addr1.to_lowercase()));
 }
 
 #[test]
-fn load_wallet_from_keystore() {
-    let _lock = ENV_LOCK.lock().unwrap();
+fn remove_unknown_address_errors() {
     let dir = tempfile::tempdir().unwrap();
-    let keystores_dir = dir.path().join("keystores");
+    let config_path = dir.path().join("config.json");
 
-    // Clear env to ensure we use keystore
-    unsafe { unset("AGENT_PRIVATE_KEY") };
-
-    let test_key = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
-    let password = "test-pw";
-    let (expected_addr, _) = wallet::import_keystore(test_key, password, &keystores_dir).unwrap();
-
-    let fake_legacy = dir.path().join("nonexistent-keyfile.json");
-    let signer = wallet::load_wallet(None, Some(password), &keystores_dir, Some(&fake_legacy)).unwrap();
-    let address = format!("{:?}", signer.address());
-    assert_eq!(address.to_lowercase(), expected_addr.to_lowercase());
+    wallet::add_wallet_to(KEY1, &config_path).unwrap();
+    let result = wallet::remove_wallet_from("0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef", &config_path);
+    assert!(result.is_err());
 }
 
 #[test]
-fn select_keystore_none_when_empty() {
+fn delete_all_wallets_removes_config() {
     let dir = tempfile::tempdir().unwrap();
-    let keystores_dir = dir.path().join("keystores");
+    let config_path = dir.path().join("config.json");
 
-    let selected = wallet::select_keystore(None, &keystores_dir).unwrap();
-    assert!(selected.is_none(), "should return None when no keystores exist");
+    wallet::add_wallet_to(KEY1, &config_path).unwrap();
+    assert!(config_path.exists());
+
+    wallet::delete_all_wallets_at(&config_path).unwrap();
+    assert!(!config_path.exists());
 }
 
 #[test]
-fn select_keystore_multiple_no_address_errors() {
+fn add_wallet_validates_key() {
     let dir = tempfile::tempdir().unwrap();
-    let keystores_dir = dir.path().join("keystores");
+    let config_path = dir.path().join("config.json");
 
-    // Create two keystores
-    let _ = wallet::create_keystore("pw1", &keystores_dir).unwrap();
-    let _ = wallet::create_keystore("pw2", &keystores_dir).unwrap();
+    let result = wallet::add_wallet_to("not-a-valid-key", &config_path);
+    assert!(result.is_err());
+}
 
-    let result = wallet::select_keystore(None, &keystores_dir);
-    assert!(
-        result.is_err(),
-        "should error when multiple keystores exist and no address specified"
-    );
+#[test]
+fn load_wallet_errors_when_empty() {
+    let dir = tempfile::tempdir().unwrap();
+    let config_path = dir.path().join("config.json");
+
+    std::fs::write(&config_path, "{}").unwrap();
+
+    let result = wallet::load_wallet_from(&config_path, None);
+    assert!(result.is_err());
+}
+
+#[test]
+fn select_unknown_agent_errors() {
+    let dir = tempfile::tempdir().unwrap();
+    let config_path = dir.path().join("config.json");
+
+    wallet::add_wallet_to(KEY1, &config_path).unwrap();
+
+    let result = wallet::load_wallet_from(&config_path, Some("0xdeadbeef"));
+    assert!(result.is_err());
+}
+
+#[test]
+fn list_wallets_returns_all_addresses() {
+    let dir = tempfile::tempdir().unwrap();
+    let config_path = dir.path().join("config.json");
+
+    wallet::add_wallet_to(KEY1, &config_path).unwrap();
+    wallet::add_wallet_to(KEY2, &config_path).unwrap();
+
+    let wallets = wallet::list_wallets_from(&config_path).unwrap();
+    assert_eq!(wallets.len(), 2);
 }

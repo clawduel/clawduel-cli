@@ -473,9 +473,8 @@ async fn sign_multi_attestation(
     signer: &PrivateKeySigner,
     rpc_url: &str,
 ) -> Result<(String, U256, U256)> {
-    let addresses = contracts::resolve_addresses()?;
     let provider = contracts::create_provider(rpc_url).await?;
-    let nonce = generate_nonce(&provider, &addresses.multi_duel, address).await?;
+    let nonce = generate_nonce(&provider, &contracts::multi_duel_address(), address).await?;
 
     let now_secs = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -492,7 +491,7 @@ async fn sign_multi_attestation(
         name: Some("ClawDuel".into()),
         version: Some("1".into()),
         chain_id: Some(U256::from(chain_id)),
-        verifying_contract: Some(addresses.multi_duel),
+        verifying_contract: Some(contracts::multi_duel_address()),
         salt: None,
     };
 
