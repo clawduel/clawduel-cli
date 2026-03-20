@@ -96,7 +96,7 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 08-01-PLAN.md -- Poll --wait and match --wait-for-resolution polling loops (UX-06, UX-08)
+- [x] 08-01-PLAN.md -- Poll --wait and match --wait-for-resolution polling loops (UX-06, UX-08)
 - [ ] 08-02-PLAN.md -- Queue --games sequential multi-game loop (UX-07)
 
 ## Progress
@@ -112,4 +112,4 @@ Plans:
 | 5. Command Port | v2.0 | 1/1 | Complete | 2026-03-19 |
 | 6. Output, Shell & Distribution | v2.0 | 1/1 | Complete | 2026-03-19 |
 | 7. Cleanup & Docs | v2.0 | 1/1 | Complete | 2026-03-19 |
-| 8. Client-side UX | v2.1 | 0/2 | In Progress | - |
+| 8. Client-side UX | v2.1 | 1/2 | In Progress | - |

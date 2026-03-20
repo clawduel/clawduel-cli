@@ -1,17 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v2.0
-milestone_name: Rust Rewrite
-status: completed
-stopped_at: Completed 07-01-PLAN.md -- All phases complete
-last_updated: "2026-03-19T22:55:30.000Z"
-last_activity: 2026-03-19 -- Completed 07-01 (cleanup and docs)
+milestone: v2.1
+milestone_name: Client UX
+status: executing
+stopped_at: Completed 08-01-PLAN.md
+last_updated: "2026-03-20T13:33:23Z"
+last_activity: 2026-03-20 - Completed 08-01-PLAN.md
 progress:
-  total_phases: 4
+  total_phases: 5
   completed_phases: 4
-  total_plans: 5
-  completed_plans: 5
-  percent: 100
+  total_plans: 7
+  completed_plans: 6
 ---
 
 # Project State
@@ -21,24 +20,20 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-19)
 
 **Core value:** A Claude Code agent can go from zero to completing a full ClawDuel match autonomously
-**Current focus:** Phase 7 - Cleanup & Docs (v2.0 Rust Rewrite) -- COMPLETE
+**Current focus:** Phase 08 — client-side-ux-improvements
 
 ## Current Position
 
-Phase: 7 of 7 (Cleanup & Docs) -- COMPLETE
-Plan: All plans complete (07-01)
-Status: v2.0 Rust Rewrite complete
-Last activity: 2026-03-19 -- Completed 07-01 (cleanup and docs)
-
-Progress: [██████████] 100%
+Phase: 08 (client-side-ux-improvements) — EXECUTING
+Plan: 2 of 2
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 5
-- Average duration: 7 min
-- Total execution time: 0.58 hours
+- Total plans completed: 6
+- Average duration: 6 min
+- Total execution time: 0.62 hours
 
 | Phase | Plan | Duration | Tasks | Files |
 |-------|------|----------|-------|-------|
@@ -47,6 +42,7 @@ Progress: [██████████] 100%
 | 05    | 01   | 11 min   | 6     | 16    |
 | 06    | 01   | 6 min    | 5     | 16    |
 | 07    | 01   | 2 min    | 3     | 3     |
+| 08    | 01   | 2 min    | 2     | 3     |
 
 ## Accumulated Context
 
@@ -75,10 +71,17 @@ Recent decisions affecting current work:
 - [06-01]: Used rustyline 15 for readline REPL with history
 - [06-01]: Box::pin shell future to break async recursion cycle
 - [06-01]: OutputFormat enum with clap ValueEnum derive for --output flag
+- [08-01]: Extracted poll_once() and fetch_match() helpers for reusable single-cycle logic
+- [08-01]: Table mode prints progress per cycle, JSON mode emits final result only
+- [08-01]: Match resolution default interval 10s (vs poll 3s) since resolution takes minutes
 
 ### Pending Todos
 
 None yet.
+
+### Roadmap Evolution
+
+- Phase 8 added: Client-side UX improvements: --wait flag on poll, --games flag on queue, --wait-for-resolution on match
 
 ### Blockers/Concerns
 
@@ -91,6 +94,6 @@ None yet.
 
 ## Session Continuity
 
-Last activity: 2026-03-19 - Completed 07-01-PLAN.md
-Stopped at: All phases complete. v2.0 Rust Rewrite shipped.
+Last activity: 2026-03-20 - Completed 08-01-PLAN.md
+Stopped at: Completed 08-01-PLAN.md, next is 08-02-PLAN.md
 Resume file: None

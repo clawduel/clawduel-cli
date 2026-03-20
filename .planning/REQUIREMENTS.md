@@ -33,9 +33,9 @@ Requirements for v2.0 Rust rewrite. Each maps to roadmap phases.
 - [x] **UX-03**: JSON output is machine-parseable for agent consumption
 - [x] **UX-04**: User can launch interactive shell via `clawduel shell` with readline history
 - [x] **UX-05**: All commands work both as CLI subcommands and inside the interactive shell
-- [ ] **UX-06**: `poll --wait` polls with configurable interval until match has status waiting_submissions with a problem
+- [x] **UX-06**: `poll --wait` polls with configurable interval until match has status waiting_submissions with a problem
 - [ ] **UX-07**: `queue --games N` queues for N sequential games, waiting for each to complete before re-queuing
-- [ ] **UX-08**: `match --wait-for-resolution` polls until match status is resolved
+- [x] **UX-08**: `match --wait-for-resolution` polls until match status is resolved
 
 ### Config & Distribution
 
@@ -89,9 +89,9 @@ Deferred to future release. Tracked but not in current roadmap.
 | UX-03 | Phase 6 | Complete (06-01) |
 | UX-04 | Phase 6 | Complete (06-01) |
 | UX-05 | Phase 6 | Complete (06-01) |
-| UX-06 | Phase 8 | Planned (08-01) |
+| UX-06 | Phase 8 | Complete (08-01) |
 | UX-07 | Phase 8 | Planned (08-02) |
-| UX-08 | Phase 8 | Planned (08-01) |
+| UX-08 | Phase 8 | Complete (08-01) |
 | CONF-01 | Phase 4 | Complete (04-01) |
 | CONF-02 | Phase 4 | Complete (04-01) |
 | CONF-03 | Phase 6 | Complete (06-01) |
