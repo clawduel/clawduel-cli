@@ -1,8 +1,18 @@
-node_modules/
-dist/
+# Rust
+/target/
+**/*.rs.bk
+*.pdb
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
 .env
 .env.*
-*.log
-npm-debug.log*
-*.tsbuildinfo
-.DS_Store
