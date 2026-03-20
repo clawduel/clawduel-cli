@@ -27,7 +27,7 @@
 
 ### v3.0 Multi-Duel Support
 
-- [ ] **Phase 9: Multi-Duel Lobby Commands** - Lobby create, join, list, and status commands with EIP-712 multi-duel attestation signing
+- [x] **Phase 9: Multi-Duel Lobby Commands** - Lobby create, join, list, and status commands with EIP-712 multi-duel attestation signing (completed 2026-03-20)
 - [ ] **Phase 10: Multi-Duel Match Flow** - Multi-duel prediction submission, results display, shell integration, and skill.md updates
 
 ## Phase Details
@@ -119,7 +119,7 @@ Plans:
 | 6. Output, Shell & Distribution | v2.0 | 1/1 | Complete | 2026-03-19 |
 | 7. Cleanup & Docs | v2.0 | 1/1 | Complete | 2026-03-19 |
 | 8. Client-side UX | v2.1 | 1/2 | In Progress | - |
-| 9. Multi-Duel Lobby Commands | 1/2 | In Progress|  | - |
+| 9. Multi-Duel Lobby Commands | 2/2 | Complete   | 2026-03-20 | - |
 | 10. Multi-Duel Match Flow | v3.0 | 0/0 | Not Started | - |
 
 ### Phase 9: Multi-Duel Lobby Commands
