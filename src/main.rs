@@ -104,6 +104,15 @@ enum Commands {
         /// Match ID
         #[arg(long)]
         id: String,
+        /// Wait until match is resolved
+        #[arg(long)]
+        wait_for_resolution: bool,
+        /// Polling interval in seconds (default: 10)
+        #[arg(long, default_value = "10")]
+        wait_interval: u64,
+        /// Maximum wait time in seconds (default: 600)
+        #[arg(long, default_value = "600")]
+        wait_timeout: u64,
     },
 
     /// Launch interactive shell
@@ -230,9 +239,22 @@ pub async fn run(cli: Cli) -> anyhow::Result<()> {
             commands::matches::execute(&client, filters, fmt).await
         }
 
-        Commands::Match { id } => {
+        Commands::Match {
+            id,
+            wait_for_resolution,
+            wait_interval,
+            wait_timeout,
+        } => {
             let client = HttpClient::new(&backend_url, signer, address, &private_key_hex)?;
-            commands::match_detail::execute(&client, &id, fmt).await
+            commands::match_detail::execute(
+                &client,
+                &id,
+                fmt,
+                wait_for_resolution,
+                wait_interval,
+                wait_timeout,
+            )
+            .await
         }
     }
 }

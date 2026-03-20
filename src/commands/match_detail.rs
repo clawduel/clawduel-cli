@@ -1,5 +1,7 @@
 //! Show single match details with resolution summary.
 
+use std::time::{Duration, Instant};
+
 use anyhow::Result;
 
 use crate::http::HttpClient;
@@ -7,18 +9,78 @@ use crate::output::OutputFormat;
 use crate::security;
 
 /// Show details for a single match.
-pub async fn execute(client: &HttpClient, match_id: &str, fmt: OutputFormat) -> Result<()> {
+///
+/// When `wait_for_resolution` is true, polls repeatedly until the match
+/// status is `resolved`, or until `timeout_secs` elapses.
+pub async fn execute(
+    client: &HttpClient,
+    match_id: &str,
+    fmt: OutputFormat,
+    wait_for_resolution: bool,
+    interval_secs: u64,
+    timeout_secs: u64,
+) -> Result<()> {
     let safe_id = security::sanitize_path_segment(match_id);
+
+    if !wait_for_resolution {
+        let data = fetch_match(client, &safe_id).await?;
+        return display_match(&data, &safe_id, fmt);
+    }
+
+    // Polling loop for resolution
+    let start = Instant::now();
+    let timeout = Duration::from_secs(timeout_secs);
+    let interval = Duration::from_secs(interval_secs);
+
+    loop {
+        let data = fetch_match(client, &safe_id).await?;
+        let elapsed = start.elapsed();
+
+        let status = data.get("status").and_then(|s| s.as_str()).unwrap_or("unknown");
+
+        if status == "resolved" {
+            if matches!(fmt, OutputFormat::Table) {
+                println!(
+                    "[{:>3}s] Match resolved!",
+                    elapsed.as_secs()
+                );
+            }
+            return display_match(&data, &safe_id, fmt);
+        }
+
+        // Print progress in table mode
+        if matches!(fmt, OutputFormat::Table) {
+            println!(
+                "[{:>3}s] Waiting for resolution... status: {status}",
+                elapsed.as_secs()
+            );
+        }
+
+        // Check timeout
+        if elapsed >= timeout {
+            if matches!(fmt, OutputFormat::Table) {
+                println!("Timeout after {}s", timeout_secs);
+            }
+            return display_match(&data, &safe_id, fmt);
+        }
+
+        tokio::time::sleep(interval).await;
+    }
+}
+
+/// Fetch match data from the API and return parsed JSON.
+pub async fn fetch_match(client: &HttpClient, safe_id: &str) -> Result<serde_json::Value> {
     let data = client.get(&format!("/api/matches/{safe_id}")).await?;
 
     if let Some(error) = data.get("error").and_then(|e| e.as_str()) {
-        eprintln!("Error: {error}");
-        if matches!(fmt, OutputFormat::Json) {
-            crate::output::print_json(&data)?;
-        }
-        return Ok(());
+        anyhow::bail!("API error: {error}");
     }
 
+    Ok(data)
+}
+
+/// Display match details in the requested output format.
+fn display_match(data: &serde_json::Value, safe_id: &str, fmt: OutputFormat) -> Result<()> {
     let mut result = serde_json::json!({
         "matchId": data.get("id").or_else(|| data.get("matchId")),
         "duelId": data.get("duelId"),
@@ -64,7 +126,7 @@ pub async fn execute(client: &HttpClient, match_id: &str, fmt: OutputFormat) -> 
             let match_display = result
                 .get("matchId")
                 .and_then(|v| v.as_str())
-                .unwrap_or(&safe_id);
+                .unwrap_or(safe_id);
             let status_display = result
                 .get("status")
                 .and_then(|v| v.as_str())
