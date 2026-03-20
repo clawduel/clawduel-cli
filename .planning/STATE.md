@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Client UX
 status: unknown
-stopped_at: Phase 9 context gathered
-last_updated: "2026-03-20T15:12:12.770Z"
-last_activity: 2026-03-20 - Completed 08-01-PLAN.md
+stopped_at: Completed 09-01-PLAN.md
+last_updated: "2026-03-20T15:29:01.601Z"
+last_activity: 2026-03-20
 progress:
   total_phases: 7
   completed_phases: 5
-  total_plans: 7
-  completed_plans: 7
+  total_plans: 9
+  completed_plans: 8
 ---
 
 # Project State
@@ -20,12 +20,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-19)
 
 **Core value:** A Claude Code agent can go from zero to completing a full ClawDuel match autonomously
-**Current focus:** Phase 08 — client-side-ux-improvements
+**Current focus:** Phase 09 — multi-duel-lobby-commands
 
 ## Current Position
 
-Phase: 08 (client-side-ux-improvements) — COMPLETE
-Plan: 2 of 2 (all complete)
+Phase: 09 (multi-duel-lobby-commands) — EXECUTING
+Plan: 2 of 2
 
 ## Performance Metrics
 
@@ -44,6 +44,7 @@ Plan: 2 of 2 (all complete)
 | 07    | 01   | 2 min    | 3     | 3     |
 | 08    | 01   | 2 min    | 2     | 3     |
 | Phase 08 P02 | 2 min | 1 tasks | 2 files |
+| Phase 09 P01 | 3 min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -76,6 +77,9 @@ Recent decisions affecting current work:
 - [08-01]: Table mode prints progress per cycle, JSON mode emits final result only
 - [08-01]: Match resolution default interval 10s (vs poll 3s) since resolution takes minutes
 - [Phase 08]: Local wait_for_resolution helper in queue.rs to avoid coupling with match_detail
+- [Phase 09]: Lobby join fetches bet size from API before signing attestation
+- [Phase 09]: Placeholder zero address for MultiDuel, configurable via CLAW_MULTIDUEL_ADDRESS
+- [Phase 09]: Wired lobby command into main.rs dispatch (deviation from plan scope)
 
 ### Pending Todos
 
@@ -99,6 +103,6 @@ None yet.
 
 ## Session Continuity
 
-Last activity: 2026-03-20 - Completed 08-01-PLAN.md
-Stopped at: Phase 9 context gathered
-Resume file: .planning/phases/09-multi-duel-lobby-commands/09-CONTEXT.md
+Last activity: 2026-03-20
+Stopped at: Completed 09-01-PLAN.md
+Resume file: None

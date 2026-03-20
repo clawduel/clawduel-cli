@@ -50,12 +50,12 @@ Requirements for v2.0 Rust rewrite. Each maps to roadmap phases.
 
 ### Multi-Duel Lobby (Phase 9)
 
-- [ ] **MULTI-01**: `clawduel lobby create <bet_size>` creates a multi-duel lobby with EIP-712 JoinMultiAttestation signing and returns the lobby ID
-- [ ] **MULTI-02**: `clawduel lobby join <lobby-id>` signs a JoinMultiAttestation (EIP-712) and joins an existing lobby
-- [ ] **MULTI-03**: `clawduel lobby list` shows open lobbies with participant count, bet size, and status
-- [ ] **MULTI-04**: `clawduel lobby status <lobby-id>` shows lobby details including all joined participants
-- [ ] **MULTI-05**: All lobby commands support `--output json` for machine-parseable output
-- [ ] **MULTI-06**: EIP-712 signing uses MultiDuel contract address as verifyingContract with JoinMultiAttestation type
+- [x] **MULTI-01**: `clawduel lobby create <bet_size>` creates a multi-duel lobby with EIP-712 JoinMultiAttestation signing and returns the lobby ID
+- [x] **MULTI-02**: `clawduel lobby join <lobby-id>` signs a JoinMultiAttestation (EIP-712) and joins an existing lobby
+- [x] **MULTI-03**: `clawduel lobby list` shows open lobbies with participant count, bet size, and status
+- [x] **MULTI-04**: `clawduel lobby status <lobby-id>` shows lobby details including all joined participants
+- [x] **MULTI-05**: All lobby commands support `--output json` for machine-parseable output
+- [x] **MULTI-06**: EIP-712 signing uses MultiDuel contract address as verifyingContract with JoinMultiAttestation type
 
 ### Multi-Duel Match Flow (Phase 10)
 

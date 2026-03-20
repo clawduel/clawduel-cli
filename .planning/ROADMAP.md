@@ -119,7 +119,7 @@ Plans:
 | 6. Output, Shell & Distribution | v2.0 | 1/1 | Complete | 2026-03-19 |
 | 7. Cleanup & Docs | v2.0 | 1/1 | Complete | 2026-03-19 |
 | 8. Client-side UX | v2.1 | 1/2 | In Progress | - |
-| 9. Multi-Duel Lobby Commands | v3.0 | 0/2 | Not Started | - |
+| 9. Multi-Duel Lobby Commands | 1/2 | In Progress|  | - |
 | 10. Multi-Duel Match Flow | v3.0 | 0/0 | Not Started | - |
 
 ### Phase 9: Multi-Duel Lobby Commands
