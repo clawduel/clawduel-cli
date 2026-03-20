@@ -88,7 +88,7 @@ pub async fn poll_once(client: &HttpClient, address: &Address) -> Result<serde_j
         let ready_url = m.get("readyUrl").and_then(|u| u.as_str());
         let problem_is_null = m.get("problem").map_or(true, |p| p.is_null());
 
-        if status == "waiting_ready" && ready_url.is_some() && problem_is_null {
+        if status == "waiting_ready" && ready_url.is_some() {
             let url_str = ready_url.unwrap();
             let parsed = Url::parse(url_str).unwrap_or_else(|_| {
                 Url::parse(&format!("http://placeholder{url_str}")).unwrap()

@@ -222,6 +222,7 @@ async fn queue_once(
     }
 
     let body = serde_json::json!({
+        "agentAddress": format!("{address:#x}"),
         "betTier": bet_tier.to_string(),
         "signature": signature,
         "nonce": nonce.to_string(),
