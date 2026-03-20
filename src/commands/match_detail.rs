@@ -4,9 +4,23 @@ use std::time::{Duration, Instant};
 
 use anyhow::Result;
 
+use tabled::Tabled;
+
 use crate::http::HttpClient;
 use crate::output::OutputFormat;
 use crate::security;
+
+#[derive(Tabled)]
+struct RankingRow {
+    #[tabled(rename = "Rank")]
+    rank: String,
+    #[tabled(rename = "Agent")]
+    agent: String,
+    #[tabled(rename = "Prediction")]
+    prediction: String,
+    #[tabled(rename = "Payout")]
+    payout: String,
+}
 
 /// Show details for a single match.
 ///
@@ -81,6 +95,98 @@ pub async fn fetch_match(client: &HttpClient, safe_id: &str) -> Result<serde_jso
 
 /// Display match details in the requested output format.
 fn display_match(data: &serde_json::Value, safe_id: &str, fmt: OutputFormat) -> Result<()> {
+    // Detect multi-duel matches by presence of a non-empty rankings array
+    let is_multi_duel = data
+        .get("rankings")
+        .and_then(|r| r.as_array())
+        .map_or(false, |a| !a.is_empty());
+
+    if is_multi_duel {
+        let rankings = data.get("rankings").and_then(|r| r.as_array()).unwrap();
+        let result = serde_json::json!({
+            "matchId": data.get("id").or_else(|| data.get("matchId")),
+            "type": "multi-duel",
+            "status": data.get("status"),
+            "betSize": format_usdc_from_value(data.get("betSize")),
+            "problemTitle": data.get("problemTitle"),
+            "problemCategory": data.get("problemCategory"),
+            "actualValue": data.get("actualValue"),
+            "rankings": data.get("rankings"),
+        });
+
+        match fmt {
+            OutputFormat::Json => {
+                crate::output::print_json(&result)?;
+            }
+            OutputFormat::Table => {
+                let match_display = result
+                    .get("matchId")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or(safe_id);
+                let status_display = result
+                    .get("status")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("unknown");
+
+                let mut header_rows = vec![
+                    ("Match ID", match_display.to_string()),
+                    ("Type", "Multi-Duel".to_string()),
+                    ("Status", status_display.to_string()),
+                ];
+                if let Some(title) = result.get("problemTitle").and_then(|v| v.as_str()) {
+                    header_rows.push(("Problem", title.to_string()));
+                }
+                if let Some(bet) = result.get("betSize").and_then(|v| v.as_str()) {
+                    header_rows.push(("Bet Size", bet.to_string()));
+                }
+                if let Some(actual) = result.get("actualValue").and_then(|v| v.as_str()) {
+                    header_rows.push(("Actual Value", actual.to_string()));
+                }
+                crate::output::print_detail(header_rows);
+
+                // Rankings table
+                let rows: Vec<RankingRow> = rankings
+                    .iter()
+                    .enumerate()
+                    .map(|(i, r)| {
+                        let agent = r
+                            .get("agent")
+                            .or_else(|| r.get("nickname"))
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("?")
+                            .to_string();
+                        let prediction = r
+                            .get("prediction")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("-")
+                            .to_string();
+                        let payout = r
+                            .get("payout")
+                            .map(|v| format_usdc_from_value(Some(v)))
+                            .unwrap_or_else(|| "-".to_string());
+                        let rank = r
+                            .get("rank")
+                            .and_then(|v| v.as_u64())
+                            .map(|r| r.to_string())
+                            .unwrap_or_else(|| (i + 1).to_string());
+                        RankingRow {
+                            rank,
+                            agent,
+                            prediction,
+                            payout,
+                        }
+                    })
+                    .collect();
+
+                if !rows.is_empty() {
+                    println!();
+                    crate::output::print_table(&rows);
+                }
+            }
+        }
+        return Ok(());
+    }
+
     let mut result = serde_json::json!({
         "matchId": data.get("id").or_else(|| data.get("matchId")),
         "duelId": data.get("duelId"),
