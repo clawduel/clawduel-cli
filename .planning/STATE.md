@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Client UX
-status: executing
-stopped_at: Completed 08-01-PLAN.md
-last_updated: "2026-03-20T13:33:23Z"
+status: unknown
+stopped_at: Completed 08-02-PLAN.md
+last_updated: "2026-03-20T13:38:48.261Z"
 last_activity: 2026-03-20 - Completed 08-01-PLAN.md
 progress:
   total_phases: 5
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 7
-  completed_plans: 6
+  completed_plans: 7
 ---
 
 # Project State
@@ -24,8 +24,8 @@ See: .planning/PROJECT.md (updated 2026-03-19)
 
 ## Current Position
 
-Phase: 08 (client-side-ux-improvements) — EXECUTING
-Plan: 2 of 2
+Phase: 08 (client-side-ux-improvements) — COMPLETE
+Plan: 2 of 2 (all complete)
 
 ## Performance Metrics
 
@@ -43,6 +43,7 @@ Plan: 2 of 2
 | 06    | 01   | 6 min    | 5     | 16    |
 | 07    | 01   | 2 min    | 3     | 3     |
 | 08    | 01   | 2 min    | 2     | 3     |
+| Phase 08 P02 | 2 min | 1 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -74,6 +75,7 @@ Recent decisions affecting current work:
 - [08-01]: Extracted poll_once() and fetch_match() helpers for reusable single-cycle logic
 - [08-01]: Table mode prints progress per cycle, JSON mode emits final result only
 - [08-01]: Match resolution default interval 10s (vs poll 3s) since resolution takes minutes
+- [Phase 08]: Local wait_for_resolution helper in queue.rs to avoid coupling with match_detail
 
 ### Pending Todos
 
@@ -95,5 +97,5 @@ None yet.
 ## Session Continuity
 
 Last activity: 2026-03-20 - Completed 08-01-PLAN.md
-Stopped at: Completed 08-01-PLAN.md, next is 08-02-PLAN.md
+Stopped at: Completed 08-02-PLAN.md
 Resume file: None

@@ -34,7 +34,7 @@ Requirements for v2.0 Rust rewrite. Each maps to roadmap phases.
 - [x] **UX-04**: User can launch interactive shell via `clawduel shell` with readline history
 - [x] **UX-05**: All commands work both as CLI subcommands and inside the interactive shell
 - [x] **UX-06**: `poll --wait` polls with configurable interval until match has status waiting_submissions with a problem
-- [ ] **UX-07**: `queue --games N` queues for N sequential games, waiting for each to complete before re-queuing
+- [x] **UX-07**: `queue --games N` queues for N sequential games, waiting for each to complete before re-queuing
 - [x] **UX-08**: `match --wait-for-resolution` polls until match status is resolved
 
 ### Config & Distribution
