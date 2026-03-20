@@ -12,7 +12,7 @@ pub async fn execute(client: &HttpClient, nickname: &str, fmt: OutputFormat) -> 
     }
 
     let body = serde_json::json!({ "nickname": nickname });
-    let (status, response) = client.post("/agents/register", &body).await?;
+    let (status, response) = client.post("/api/agents/register", &body).await?;
 
     let mut output = response.clone();
     output["status"] = serde_json::json!(status);
