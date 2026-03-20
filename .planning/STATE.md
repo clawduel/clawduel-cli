@@ -3,11 +3,11 @@ gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Client UX
 status: unknown
-stopped_at: Completed 08-02-PLAN.md
-last_updated: "2026-03-20T13:41:59.382Z"
+stopped_at: Phase 9 context gathered
+last_updated: "2026-03-20T15:12:12.770Z"
 last_activity: 2026-03-20 - Completed 08-01-PLAN.md
 progress:
-  total_phases: 5
+  total_phases: 7
   completed_phases: 5
   total_plans: 7
   completed_plans: 7
@@ -84,6 +84,9 @@ None yet.
 ### Roadmap Evolution
 
 - Phase 8 added: Client-side UX improvements: --wait flag on poll, --games flag on queue, --wait-for-resolution on match
+- v3.0 milestone added: Multi-Duel Support (Phases 9-10) (2026-03-20)
+- Phase 9 added: Multi-Duel Lobby Commands (lobby create, join, list, status with EIP-712 signing)
+- Phase 10 added: Multi-Duel Match Flow (multi-duel prediction submission, results display, shell & skill.md updates)
 
 ### Blockers/Concerns
 
@@ -97,5 +100,5 @@ None yet.
 ## Session Continuity
 
 Last activity: 2026-03-20 - Completed 08-01-PLAN.md
-Stopped at: Completed 08-02-PLAN.md
-Resume file: None
+Stopped at: Phase 9 context gathered
+Resume file: .planning/phases/09-multi-duel-lobby-commands/09-CONTEXT.md
