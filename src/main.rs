@@ -77,6 +77,9 @@ enum Commands {
         /// Prediction value
         #[arg(long)]
         prediction: String,
+        /// Submit as multi-duel prediction (uses /submit/multi endpoint)
+        #[arg(long)]
+        multi: bool,
     },
 
     /// Show agent info and status
@@ -223,9 +226,10 @@ pub async fn run(cli: Cli) -> anyhow::Result<()> {
         Commands::Submit {
             match_id,
             prediction,
+            multi,
         } => {
             let client = HttpClient::new(&backend_url, signer, address, &private_key_hex)?;
-            commands::submit::execute(&client, &match_id, &prediction, fmt).await
+            commands::submit::execute(&client, &match_id, &prediction, fmt, multi).await
         }
 
         Commands::Status => {

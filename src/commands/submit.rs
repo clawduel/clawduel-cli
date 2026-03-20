@@ -19,21 +19,26 @@ pub async fn execute(
     match_id: &str,
     prediction: &str,
     fmt: OutputFormat,
+    multi: bool,
 ) -> Result<()> {
     let sanitized = sanitize_prediction(prediction);
     let safe_id = security::sanitize_path_segment(match_id);
 
     if matches!(fmt, OutputFormat::Table) {
-        println!("Submitting prediction for match {safe_id}...");
+        let mode = if multi { "multi-duel " } else { "" };
+        println!("Submitting {mode}prediction for match {safe_id}...");
         if sanitized != prediction.trim() {
             println!("  (Prediction text was sanitized for submission)");
         }
     }
 
     let body = serde_json::json!({ "prediction": sanitized });
-    let (status, response) = client
-        .post(&format!("/matches/{safe_id}/submit"), &body)
-        .await?;
+    let endpoint = if multi {
+        format!("/matches/{safe_id}/submit/multi")
+    } else {
+        format!("/matches/{safe_id}/submit")
+    };
+    let (status, response) = client.post(&endpoint, &body).await?;
 
     let mut output = response.clone();
     output["status"] = serde_json::json!(status);
