@@ -54,7 +54,8 @@ sol! {
     #[derive(Debug)]
     struct JoinMultiAttestation {
         address agent;
-        uint256 betTier;
+        uint256 duelId;
+        uint256 betSize;
         uint256 nonce;
         uint256 deadline;
     }
