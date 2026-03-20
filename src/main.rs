@@ -77,6 +77,9 @@ enum Commands {
         /// Prediction value
         #[arg(long)]
         prediction: String,
+        /// Submit as multi-duel prediction (uses /submit/multi endpoint)
+        #[arg(long)]
+        multi: bool,
     },
 
     /// Show agent info and status
@@ -117,6 +120,9 @@ enum Commands {
         #[arg(long, default_value = "600")]
         wait_timeout: u64,
     },
+
+    /// Multi-duel lobby management
+    Lobby(commands::lobby::LobbyArgs),
 
     /// Launch interactive shell
     Shell,
@@ -220,9 +226,10 @@ pub async fn run(cli: Cli) -> anyhow::Result<()> {
         Commands::Submit {
             match_id,
             prediction,
+            multi,
         } => {
             let client = HttpClient::new(&backend_url, signer, address, &private_key_hex)?;
-            commands::submit::execute(&client, &match_id, &prediction, fmt).await
+            commands::submit::execute(&client, &match_id, &prediction, fmt, multi).await
         }
 
         Commands::Status => {
@@ -264,6 +271,12 @@ pub async fn run(cli: Cli) -> anyhow::Result<()> {
                 wait_timeout,
             )
             .await
+        }
+
+        Commands::Lobby(args) => {
+            let client =
+                HttpClient::new(&backend_url, signer.clone(), address, &private_key_hex)?;
+            commands::lobby::execute(args, &client, &address, &signer, &rpc_url, fmt).await
         }
     }
 }

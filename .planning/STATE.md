@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.1
 milestone_name: Client UX
 status: unknown
-stopped_at: Completed 08-02-PLAN.md
-last_updated: "2026-03-20T13:41:59.382Z"
-last_activity: 2026-03-20 - Completed 08-01-PLAN.md
+stopped_at: Completed 10-01-PLAN.md
+last_updated: "2026-03-20T15:54:46.598Z"
+last_activity: 2026-03-20
 progress:
-  total_phases: 5
-  completed_phases: 5
-  total_plans: 7
-  completed_plans: 7
+  total_phases: 7
+  completed_phases: 7
+  total_plans: 11
+  completed_plans: 11
 ---
 
 # Project State
@@ -20,12 +20,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-19)
 
 **Core value:** A Claude Code agent can go from zero to completing a full ClawDuel match autonomously
-**Current focus:** Phase 08 — client-side-ux-improvements
+**Current focus:** Phase 10 — multi-duel-match-flow
 
 ## Current Position
 
-Phase: 08 (client-side-ux-improvements) — COMPLETE
-Plan: 2 of 2 (all complete)
+Phase: 10 (multi-duel-match-flow) — EXECUTING
+Plan: 2 of 2
 
 ## Performance Metrics
 
@@ -44,6 +44,10 @@ Plan: 2 of 2 (all complete)
 | 07    | 01   | 2 min    | 3     | 3     |
 | 08    | 01   | 2 min    | 2     | 3     |
 | Phase 08 P02 | 2 min | 1 tasks | 2 files |
+| Phase 09 P01 | 3 min | 2 tasks | 4 files |
+| Phase 09 P02 | 1 min | 2 tasks | 0 files |
+| Phase 10 P02 | 2 min | 1 tasks | 1 files |
+| Phase 10 P01 | 3 min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -76,6 +80,13 @@ Recent decisions affecting current work:
 - [08-01]: Table mode prints progress per cycle, JSON mode emits final result only
 - [08-01]: Match resolution default interval 10s (vs poll 3s) since resolution takes minutes
 - [Phase 08]: Local wait_for_resolution helper in queue.rs to avoid coupling with match_detail
+- [Phase 09]: Lobby join fetches bet size from API before signing attestation
+- [Phase 09]: Placeholder zero address for MultiDuel, configurable via CLAW_MULTIDUEL_ADDRESS
+- [Phase 09]: Wired lobby command into main.rs dispatch (deviation from plan scope)
+- [Phase 09]: Plan 02 verification-only: lobby wiring already done by Plan 01 deviation
+- [Phase 10]: Documented --multi flag on submit as intended workflow (implementation separate)
+- [Phase 10]: Multi-duel submit uses separate /submit/multi endpoint path
+- [Phase 10]: Multi-duel detection via non-empty rankings array in API response
 
 ### Pending Todos
 
@@ -84,6 +95,9 @@ None yet.
 ### Roadmap Evolution
 
 - Phase 8 added: Client-side UX improvements: --wait flag on poll, --games flag on queue, --wait-for-resolution on match
+- v3.0 milestone added: Multi-Duel Support (Phases 9-10) (2026-03-20)
+- Phase 9 added: Multi-Duel Lobby Commands (lobby create, join, list, status with EIP-712 signing)
+- Phase 10 added: Multi-Duel Match Flow (multi-duel prediction submission, results display, shell & skill.md updates)
 
 ### Blockers/Concerns
 
@@ -96,6 +110,6 @@ None yet.
 
 ## Session Continuity
 
-Last activity: 2026-03-20 - Completed 08-01-PLAN.md
-Stopped at: Completed 08-02-PLAN.md
+Last activity: 2026-03-20
+Stopped at: Completed 10-01-PLAN.md
 Resume file: None

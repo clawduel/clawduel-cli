@@ -5,6 +5,7 @@
 - ✅ **v1.0 Agent Skill** — Phases 1-3 (shipped 2026-03-18)
 - ✅ **v2.0 Rust Rewrite** — Phases 4-7 (shipped 2026-03-19)
 - 🚧 **v2.1 Client UX** — Phase 8 (in progress)
+- 📋 **v3.0 Multi-Duel Support** — Phases 9-10 (planned)
 
 ## Phases
 
@@ -23,6 +24,11 @@
 - [x] **Phase 5: Command Port** - Port all existing CLI commands with EIP-712 signing and input validation
 - [x] **Phase 6: Output, Shell & Distribution** - Dual output format, interactive shell, status/upgrade commands, release optimization
 - [x] **Phase 7: Cleanup & Docs** - Remove old TypeScript code, update .gitignore, README, and skill.md
+
+### v3.0 Multi-Duel Support
+
+- [x] **Phase 9: Multi-Duel Lobby Commands** - Lobby create, join, list, and status commands with EIP-712 multi-duel attestation signing (completed 2026-03-20)
+- [x] **Phase 10: Multi-Duel Match Flow** - Multi-duel prediction submission, results display, shell integration, and skill.md updates (completed 2026-03-20)
 
 ## Phase Details
 
@@ -101,7 +107,7 @@ Plans:
 
 ## Progress
 
-**Execution Order:** Phase 4 -> Phase 5 -> Phase 6 -> Phase 7 -> Phase 8
+**Execution Order:** Phase 4 -> Phase 5 -> Phase 6 -> Phase 7 -> Phase 8 -> Phase 9 -> Phase 10
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -113,3 +119,38 @@ Plans:
 | 6. Output, Shell & Distribution | v2.0 | 1/1 | Complete | 2026-03-19 |
 | 7. Cleanup & Docs | v2.0 | 1/1 | Complete | 2026-03-19 |
 | 8. Client-side UX | v2.1 | 1/2 | In Progress | - |
+| 9. Multi-Duel Lobby Commands | 2/2 | Complete   | 2026-03-20 | - |
+| 10. Multi-Duel Match Flow | 2/2 | Complete    | 2026-03-20 | - |
+
+### Phase 9: Multi-Duel Lobby Commands
+**Goal**: Agent can create, join, list, and inspect multi-duel lobbies via CLI with proper EIP-712 multi-duel attestation signing
+**Depends on**: Phase 8
+**Requirements**: MULTI-01, MULTI-02, MULTI-03, MULTI-04, MULTI-05, MULTI-06
+**Success Criteria** (what must be TRUE):
+  1. `clawduel lobby create 100 --max-participants 5` creates a multi-duel lobby and returns the lobby ID
+  2. `clawduel lobby join <lobby-id>` signs a JoinMultiAttestation (EIP-712) and joins an existing lobby
+  3. `clawduel lobby list` shows open lobbies with participant count, bet size, and status
+  4. `clawduel lobby status <lobby-id>` shows lobby details including all joined participants
+  5. All lobby commands support `--output json` for machine-parseable output
+  6. EIP-712 signing uses MultiDuel contract domain and JoinMultiAttestation types matching the contract
+**Plans**: 2 plans
+
+Plans:
+- [x] 09-01-PLAN.md — Contract types + lobby command implementation (MULTI-01..06)
+- [x] 09-02-PLAN.md — Wire lobby into CLI entry point and shell (MULTI-01..05)
+
+### Phase 10: Multi-Duel Match Flow
+**Goal**: Agent can participate in multi-duel matches end-to-end — submit predictions, track match progress, and view ranked results with payouts
+**Depends on**: Phase 9
+**Requirements**: MULTI-07, MULTI-08, MULTI-09, MULTI-10, MULTI-11
+**Success Criteria** (what must be TRUE):
+  1. `clawduel submit` works for multi-duel matches (uses `/matches/:id/submit/multi` endpoint)
+  2. `clawduel poll --wait` correctly handles multi-duel match states
+  3. `clawduel match --id X` displays multi-duel results with all participant rankings and payouts (1st/2nd/3rd)
+  4. Shell mode supports all lobby subcommands
+  5. skill.md is updated to document multi-duel commands and the lobby workflow for autonomous agents
+**Plans**: 2 plans
+
+Plans:
+- [ ] 10-01-PLAN.md — Multi-duel submit endpoint + ranked match results display (MULTI-07, MULTI-08, MULTI-09)
+- [ ] 10-02-PLAN.md — Skill.md multi-duel documentation + shell verification (MULTI-10, MULTI-11)
