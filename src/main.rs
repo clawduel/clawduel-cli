@@ -45,6 +45,9 @@ enum Commands {
         /// Attestation timeout in seconds
         #[arg(long, default_value = "3600")]
         timeout: u64,
+        /// Number of games to play sequentially (default: 1, no waiting)
+        #[arg(long, default_value = "1")]
+        games: u64,
     },
 
     /// Cancel queue entry
@@ -186,11 +189,17 @@ pub async fn run(cli: Cli) -> anyhow::Result<()> {
 
         Commands::Balance => commands::balance::execute(&address, &rpc_url, fmt).await,
 
-        Commands::Queue { bet_tier, timeout } => {
+        Commands::Queue {
+            bet_tier,
+            timeout,
+            games,
+        } => {
             let client =
                 HttpClient::new(&backend_url, signer.clone(), address, &private_key_hex)?;
-            commands::queue::execute(&client, bet_tier, timeout, &address, &signer, &rpc_url, fmt)
-                .await
+            commands::queue::execute(
+                &client, bet_tier, timeout, &address, &signer, &rpc_url, fmt, games,
+            )
+            .await
         }
 
         Commands::Dequeue { bet_tier } => {
