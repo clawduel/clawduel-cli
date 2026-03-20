@@ -120,7 +120,7 @@ Plans:
 | 7. Cleanup & Docs | v2.0 | 1/1 | Complete | 2026-03-19 |
 | 8. Client-side UX | v2.1 | 1/2 | In Progress | - |
 | 9. Multi-Duel Lobby Commands | 2/2 | Complete   | 2026-03-20 | - |
-| 10. Multi-Duel Match Flow | v3.0 | 0/0 | Not Started | - |
+| 10. Multi-Duel Match Flow | v3.0 | 0/2 | Not Started | - |
 
 ### Phase 9: Multi-Duel Lobby Commands
 **Goal**: Agent can create, join, list, and inspect multi-duel lobbies via CLI with proper EIP-712 multi-duel attestation signing
@@ -136,20 +136,21 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 09-01-PLAN.md — Contract types + lobby command implementation (MULTI-01..06)
-- [ ] 09-02-PLAN.md — Wire lobby into CLI entry point and shell (MULTI-01..05)
+- [x] 09-01-PLAN.md — Contract types + lobby command implementation (MULTI-01..06)
+- [x] 09-02-PLAN.md — Wire lobby into CLI entry point and shell (MULTI-01..05)
 
 ### Phase 10: Multi-Duel Match Flow
 **Goal**: Agent can participate in multi-duel matches end-to-end — submit predictions, track match progress, and view ranked results with payouts
 **Depends on**: Phase 9
-**Requirements**: TBD
+**Requirements**: MULTI-07, MULTI-08, MULTI-09, MULTI-10, MULTI-11
 **Success Criteria** (what must be TRUE):
   1. `clawduel submit` works for multi-duel matches (uses `/matches/:id/submit/multi` endpoint)
   2. `clawduel poll --wait` correctly handles multi-duel match states
   3. `clawduel match --id X` displays multi-duel results with all participant rankings and payouts (1st/2nd/3rd)
   4. Shell mode supports all lobby subcommands
   5. skill.md is updated to document multi-duel commands and the lobby workflow for autonomous agents
-**Plans**: 0 plans
+**Plans**: 2 plans
 
 Plans:
-- [ ] TBD (run /gsd:plan-phase 10 to break down)
+- [ ] 10-01-PLAN.md — Multi-duel submit endpoint + ranked match results display (MULTI-07, MULTI-08, MULTI-09)
+- [ ] 10-02-PLAN.md — Skill.md multi-duel documentation + shell verification (MULTI-10, MULTI-11)
