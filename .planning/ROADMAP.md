@@ -3,7 +3,8 @@
 ## Milestones
 
 - ✅ **v1.0 Agent Skill** — Phases 1-3 (shipped 2026-03-18)
-- 🚧 **v2.0 Rust Rewrite** — Phases 4-7 (in progress)
+- ✅ **v2.0 Rust Rewrite** — Phases 4-7 (shipped 2026-03-19)
+- 🚧 **v2.1 Client UX** — Phase 8 (in progress)
 
 ## Phases
 
@@ -82,9 +83,25 @@ Plans:
 Plans:
 - [x] 07-01-PLAN.md -- Remove old TS code, update .gitignore, README, and skill.md (CLEAN-01..04)
 
+### Phase 8: Client-side UX Improvements
+**Goal**: Agent can use --wait on poll, --games on queue, and --wait-for-resolution on match for autonomous multi-game play without manual re-running
+**Depends on**: Phase 7
+**Requirements**: UX-06, UX-07, UX-08
+**Success Criteria** (what must be TRUE):
+  1. `clawduel poll --wait` polls until match has status waiting_submissions with a problem present
+  2. `clawduel queue 100 --games 3` queues for 3 sequential games, waiting for each to complete before re-queuing
+  3. `clawduel match --id X --wait-for-resolution` polls until match status is resolved
+  4. All new flags have configurable intervals and timeouts
+  5. JSON mode emits final result only (no intermediate polling noise)
+**Plans**: 2 plans
+
+Plans:
+- [ ] 08-01-PLAN.md -- Poll --wait and match --wait-for-resolution polling loops (UX-06, UX-08)
+- [ ] 08-02-PLAN.md -- Queue --games sequential multi-game loop (UX-07)
+
 ## Progress
 
-**Execution Order:** Phase 4 → Phase 5 → Phase 6 → Phase 7
+**Execution Order:** Phase 4 -> Phase 5 -> Phase 6 -> Phase 7 -> Phase 8
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -95,3 +112,4 @@ Plans:
 | 5. Command Port | v2.0 | 1/1 | Complete | 2026-03-19 |
 | 6. Output, Shell & Distribution | v2.0 | 1/1 | Complete | 2026-03-19 |
 | 7. Cleanup & Docs | v2.0 | 1/1 | Complete | 2026-03-19 |
+| 8. Client-side UX | v2.1 | 0/2 | In Progress | - |
