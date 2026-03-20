@@ -1,5 +1,7 @@
 //! Poll for active match and handle ready/waiting flows.
 
+use std::time::{Duration, Instant};
+
 use alloy::primitives::Address;
 use anyhow::Result;
 use url::Url;
@@ -10,11 +12,71 @@ use crate::security;
 
 /// Poll for the agent's active match.
 ///
-/// Handles:
-/// - `waiting_ready`: sends ready signal, waits if `startsAt` is set, then re-polls
-/// - `waiting_start`: waits until `startsAt`, then re-polls
-/// - Other states: prints the data as-is
-pub async fn execute(client: &HttpClient, address: &Address, fmt: OutputFormat) -> Result<()> {
+/// When `wait` is true, polls repeatedly until the match reaches
+/// `waiting_submissions` with a problem present, or until `timeout_secs` elapses.
+pub async fn execute(
+    client: &HttpClient,
+    address: &Address,
+    fmt: OutputFormat,
+    wait: bool,
+    interval_secs: u64,
+    timeout_secs: u64,
+) -> Result<()> {
+    if !wait {
+        let data = poll_once(client, address).await?;
+        return print_poll_result(&data, fmt);
+    }
+
+    // Polling loop
+    let start = Instant::now();
+    let timeout = Duration::from_secs(timeout_secs);
+    let interval = Duration::from_secs(interval_secs);
+
+    loop {
+        let data = poll_once(client, address).await?;
+        let elapsed = start.elapsed();
+
+        // Check if match is ready (waiting_submissions with problem)
+        if let Some(m) = data.get("match") {
+            let status = m.get("status").and_then(|s| s.as_str()).unwrap_or("");
+            let has_problem = m.get("problem").map_or(false, |p| !p.is_null());
+
+            if status == "waiting_submissions" && has_problem {
+                if matches!(fmt, OutputFormat::Table) {
+                    println!(
+                        "[{:>3}s] Polling... status: waiting_submissions (problem ready!)",
+                        elapsed.as_secs()
+                    );
+                }
+                return print_poll_result(&data, fmt);
+            }
+
+            // Print progress in table mode
+            if matches!(fmt, OutputFormat::Table) {
+                println!("[{:>3}s] Polling... status: {status}", elapsed.as_secs());
+            }
+        } else {
+            // No active match
+            if matches!(fmt, OutputFormat::Table) {
+                println!("[{:>3}s] Polling... no active match", elapsed.as_secs());
+            }
+        }
+
+        // Check timeout
+        if elapsed >= timeout {
+            if matches!(fmt, OutputFormat::Table) {
+                println!("Timeout after {}s", timeout_secs);
+            }
+            return print_poll_result(&data, fmt);
+        }
+
+        tokio::time::sleep(interval).await;
+    }
+}
+
+/// Execute a single poll cycle: fetch active match, handle ready acknowledgement,
+/// handle waiting_start, and return the final JSON data.
+pub async fn poll_once(client: &HttpClient, address: &Address) -> Result<serde_json::Value> {
     let safe_address = security::sanitize_path_segment(&format!("{address:?}"));
     let data = client
         .get(&format!("/matches/active/{safe_address}"))
@@ -27,10 +89,6 @@ pub async fn execute(client: &HttpClient, address: &Address, fmt: OutputFormat) 
         let problem_is_null = m.get("problem").map_or(true, |p| p.is_null());
 
         if status == "waiting_ready" && ready_url.is_some() && problem_is_null {
-            if matches!(fmt, OutputFormat::Table) {
-                println!("Match found, sending ready signal...");
-            }
-
             let url_str = ready_url.unwrap();
             let parsed = Url::parse(url_str).unwrap_or_else(|_| {
                 Url::parse(&format!("http://placeholder{url_str}")).unwrap()
@@ -40,13 +98,8 @@ pub async fn execute(client: &HttpClient, address: &Address, fmt: OutputFormat) 
             let (resp_status, body) = client.post(path, &serde_json::json!({})).await?;
 
             if (200..300).contains(&resp_status) {
-                if matches!(fmt, OutputFormat::Table) {
-                    println!("OK: Ready signal sent");
-                }
                 if let Some(starts_at) = body.get("startsAt").and_then(|s| s.as_str()) {
                     wait_until(starts_at).await;
-                } else if matches!(fmt, OutputFormat::Table) {
-                    println!("Waiting for opponent...");
                 }
             } else {
                 let error = body
@@ -56,11 +109,10 @@ pub async fn execute(client: &HttpClient, address: &Address, fmt: OutputFormat) 
                 eprintln!("Ready acknowledgement failed ({resp_status}): {error}");
             }
 
-            // Re-poll
-            let updated = client
+            // Re-poll after ready acknowledgement
+            return client
                 .get(&format!("/matches/active/{safe_address}"))
-                .await?;
-            return print_poll_result(&updated, fmt);
+                .await;
         }
 
         // Both agents ready, waiting for synchronized start
@@ -69,14 +121,13 @@ pub async fn execute(client: &HttpClient, address: &Address, fmt: OutputFormat) 
                 wait_until(starts_at).await;
             }
 
-            let updated = client
+            return client
                 .get(&format!("/matches/active/{safe_address}"))
-                .await?;
-            return print_poll_result(&updated, fmt);
+                .await;
         }
     }
 
-    print_poll_result(&data, fmt)
+    Ok(data)
 }
 
 fn print_poll_result(data: &serde_json::Value, fmt: OutputFormat) -> Result<()> {
@@ -113,7 +164,7 @@ fn print_poll_result(data: &serde_json::Value, fmt: OutputFormat) -> Result<()> 
 
 /// Wait until the given ISO 8601 timestamp.
 async fn wait_until(starts_at: &str) {
-    use std::time::{Duration, SystemTime, UNIX_EPOCH};
+    use std::time::{SystemTime, UNIX_EPOCH};
 
     let target_ms = match parse_iso8601_to_epoch_ms(starts_at) {
         Some(ms) => ms,

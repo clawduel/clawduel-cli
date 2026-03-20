@@ -54,7 +54,17 @@ enum Commands {
     },
 
     /// Poll for active match
-    Poll,
+    Poll {
+        /// Wait until match has status waiting_submissions with a problem
+        #[arg(long)]
+        wait: bool,
+        /// Polling interval in seconds (default: 3)
+        #[arg(long, default_value = "3")]
+        wait_interval: u64,
+        /// Maximum wait time in seconds (default: 300)
+        #[arg(long, default_value = "300")]
+        wait_timeout: u64,
+    },
 
     /// Submit prediction for a match
     Submit {
@@ -179,9 +189,14 @@ pub async fn run(cli: Cli) -> anyhow::Result<()> {
             commands::dequeue::execute(&client, bet_tier, fmt).await
         }
 
-        Commands::Poll => {
+        Commands::Poll {
+            wait,
+            wait_interval,
+            wait_timeout,
+        } => {
             let client = HttpClient::new(&backend_url, signer, address, &private_key_hex)?;
-            commands::poll::execute(&client, &address, fmt).await
+            commands::poll::execute(&client, &address, fmt, wait, wait_interval, wait_timeout)
+                .await
         }
 
         Commands::Submit {
