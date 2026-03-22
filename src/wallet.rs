@@ -54,9 +54,19 @@ fn load_wallet_inner(cfg: &config::Config, agent: Option<&str>) -> Result<Privat
 }
 
 /// Add a wallet (address -> private_key) to config.json.
+/// Uses file locking to prevent concurrent writes from clobbering each other.
 pub fn add_wallet(private_key: &str) -> Result<String> {
-    let cfg_path = config::config_path()?;
-    add_wallet_to(private_key, &cfg_path)
+    let key = private_key.strip_prefix("0x").unwrap_or(private_key);
+    let signer = PrivateKeySigner::from_str(key).context("Invalid private key")?;
+    let address = format!("{:?}", signer.address());
+
+    let key_owned = format!("0x{key}");
+    let addr_clone = address.clone();
+    config::modify_config_locked(move |cfg| {
+        cfg.wallets.insert(addr_clone, key_owned);
+    })?;
+
+    Ok(address)
 }
 
 /// Add a wallet to a specific config path (for testing).
@@ -65,36 +75,44 @@ pub fn add_wallet_to(private_key: &str, path: &std::path::Path) -> Result<String
     let signer = PrivateKeySigner::from_str(key).context("Invalid private key")?;
     let address = format!("{:?}", signer.address());
 
-    let mut cfg = config::load_config_from(path)?.unwrap_or_default();
-    cfg.wallets.insert(address.clone(), format!("0x{key}"));
-    config::save_config_to(&cfg, path)?;
+    let key_owned = format!("0x{key}");
+    let addr_clone = address.clone();
+    config::modify_config_locked_at(path, move |cfg| {
+        cfg.wallets.insert(addr_clone, key_owned);
+    })?;
 
     Ok(address)
 }
 
 /// Remove a wallet by address from config.json.
+/// Uses file locking to prevent concurrent writes from clobbering each other.
 pub fn remove_wallet(address: &str) -> Result<()> {
-    let cfg_path = config::config_path()?;
-    remove_wallet_from(address, &cfg_path)
+    let normalized = address.to_lowercase();
+    config::modify_config_locked(move |cfg| {
+        let key_to_remove = cfg
+            .wallets
+            .keys()
+            .find(|a| a.to_lowercase() == normalized)
+            .cloned();
+        if let Some(k) = key_to_remove {
+            cfg.wallets.remove(&k);
+        }
+    })
 }
 
 /// Remove a wallet from a specific config path (for testing).
 pub fn remove_wallet_from(address: &str, path: &std::path::Path) -> Result<()> {
-    let mut cfg = config::load_config_from(path)?.unwrap_or_default();
     let normalized = address.to_lowercase();
-    let key_to_remove = cfg
-        .wallets
-        .keys()
-        .find(|a| a.to_lowercase() == normalized)
-        .cloned();
-
-    match key_to_remove {
-        Some(k) => {
+    config::modify_config_locked_at(path, move |cfg| {
+        let key_to_remove = cfg
+            .wallets
+            .keys()
+            .find(|a| a.to_lowercase() == normalized)
+            .cloned();
+        if let Some(k) = key_to_remove {
             cfg.wallets.remove(&k);
-            config::save_config_to(&cfg, path)
         }
-        None => bail!("No wallet found for {address}"),
-    }
+    })
 }
 
 /// List all wallet addresses in config.

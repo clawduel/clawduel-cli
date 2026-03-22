@@ -91,6 +91,73 @@ pub fn save_config_to(config: &Config, path: &std::path::Path) -> Result<()> {
     Ok(())
 }
 
+/// Atomically modify the config file with file locking.
+/// Acquires an exclusive lock, reads current state, applies the modifier, and writes back.
+/// Prevents concurrent writes from clobbering each other.
+pub fn modify_config_locked(modifier: impl FnOnce(&mut Config)) -> Result<()> {
+    let path = config_path()?;
+    modify_config_locked_at(&path, modifier)
+}
+
+/// Atomically modify config at a specific path with file locking.
+pub fn modify_config_locked_at(path: &std::path::Path, modifier: impl FnOnce(&mut Config)) -> Result<()> {
+    use fs2::FileExt;
+    use std::io::{Read as _, Seek, Write as _};
+
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).context("Failed to create config directory")?;
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let _ = fs::set_permissions(parent, fs::Permissions::from_mode(0o700));
+        }
+    }
+
+    // Open or create the lock file
+    let lock_path = path.with_extension("lock");
+    let lock_file = fs::OpenOptions::new()
+        .write(true)
+        .create(true)
+        .truncate(false)
+        .open(&lock_path)
+        .context("Failed to open lock file")?;
+
+    // Acquire exclusive lock (blocks until available)
+    lock_file.lock_exclusive().context("Failed to acquire config lock")?;
+
+    // Read current config under lock
+    let mut cfg = load_config_from(path)?.unwrap_or_default();
+
+    // Apply modification
+    modifier(&mut cfg);
+
+    // Write back under lock
+    let json = serde_json::to_string_pretty(&cfg)?;
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        let mut file = fs::OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .mode(0o600)
+            .open(path)
+            .context("Failed to create config file")?;
+        file.write_all(json.as_bytes()).context("Failed to write config file")?;
+    }
+
+    #[cfg(not(unix))]
+    {
+        fs::write(path, &json).context("Failed to write config file")?;
+    }
+
+    // Lock is released when lock_file is dropped
+    drop(lock_file);
+
+    Ok(())
+}
+
 /// Returns false if `CLAW_NON_INTERACTIVE=1` or stdin is not a TTY.
 pub fn is_interactive() -> bool {
     if let Ok(val) = std::env::var("CLAW_NON_INTERACTIVE") {
