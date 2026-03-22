@@ -41,7 +41,7 @@ enum Commands {
     /// Queue for a duel
     Queue {
         /// Bet tier in USDC (10, 100, 1000, 10000, 100000)
-        bet_tier: u64,
+        entry_fee: u64,
         /// Attestation timeout in seconds
         #[arg(long, default_value = "3600")]
         timeout: u64,
@@ -53,7 +53,7 @@ enum Commands {
     /// Cancel queue entry
     Dequeue {
         /// Bet tier to dequeue from
-        bet_tier: u64,
+        entry_fee: u64,
     },
 
     /// Poll for active match
@@ -77,7 +77,7 @@ enum Commands {
         /// Prediction value
         #[arg(long)]
         prediction: String,
-        /// Submit as multi-duel prediction (uses /submit/multi endpoint)
+        /// Submit as multi-competition prediction (uses /submit/multi endpoint)
         #[arg(long)]
         multi: bool,
     },
@@ -194,21 +194,21 @@ pub async fn run(cli: Cli) -> anyhow::Result<()> {
         Commands::Balance => commands::balance::execute(&address, rpc_url, fmt).await,
 
         Commands::Queue {
-            bet_tier,
+            entry_fee,
             timeout,
             games,
         } => {
             let client =
                 HttpClient::new(backend_url, signer.clone(), address, &private_key_hex)?;
             commands::queue::execute(
-                &client, bet_tier, timeout, &address, &signer, rpc_url, fmt, games,
+                &client, entry_fee, timeout, &address, &signer, rpc_url, fmt, games,
             )
             .await
         }
 
-        Commands::Dequeue { bet_tier } => {
+        Commands::Dequeue { entry_fee } => {
             let client = HttpClient::new(backend_url, signer, address, &private_key_hex)?;
-            commands::dequeue::execute(&client, bet_tier, fmt).await
+            commands::dequeue::execute(&client, entry_fee, fmt).await
         }
 
         Commands::Poll {

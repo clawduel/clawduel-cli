@@ -3,16 +3,16 @@
 use alloy::primitives::Address;
 use anyhow::Result;
 
-use crate::contracts::{self, IBank};
+use crate::contracts::{self, IPrizePool};
 use crate::output::OutputFormat;
 
 /// Display available, locked, and total USDC balance.
 pub async fn execute(address: &Address, rpc_url: &str, fmt: OutputFormat) -> Result<()> {
     let provider = contracts::create_provider(rpc_url).await?;
-    let bank = IBank::new(contracts::bank_address(), &provider);
+    let bank = IPrizePool::new(contracts::prize_pool_address(), &provider);
 
     let available = bank.balanceOf(*address).call().await?;
-    let locked = bank.lockedBalanceOf(*address).call().await?;
+    let locked = bank.balanceOf(*address).call().await?;
     let total = available + locked;
 
     let available_fmt = contracts::format_usdc(available);

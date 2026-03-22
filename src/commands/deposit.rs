@@ -4,7 +4,7 @@ use alloy::primitives::Address;
 use alloy::signers::local::PrivateKeySigner;
 use anyhow::{Result, bail};
 
-use crate::contracts::{self, IERC20, IBank};
+use crate::contracts::{self, IERC20, IPrizePool};
 use crate::output::OutputFormat;
 
 /// Deposit USDC: approve then deposit to the bank.
@@ -28,7 +28,7 @@ pub async fn execute(
         .connect_http(url);
 
     let usdc = IERC20::new(contracts::usdc_address(), &provider);
-    let bank = IBank::new(contracts::bank_address(), &provider);
+    let bank = IPrizePool::new(contracts::prize_pool_address(), &provider);
 
     // Check USDC balance
     let balance = usdc.balanceOf(*address).call().await?;
@@ -41,12 +41,12 @@ pub async fn execute(
     if matches!(fmt, OutputFormat::Table) {
         println!("Approving USDC...");
     }
-    let tx1 = usdc.approve(contracts::bank_address(), amount).send().await?;
+    let tx1 = usdc.approve(contracts::prize_pool_address(), amount).send().await?;
     let _receipt1 = tx1.watch().await?;
 
     // Deposit
     if matches!(fmt, OutputFormat::Table) {
-        println!("Depositing to Bank...");
+        println!("Depositing to Prize Pool...");
     }
     let tx2 = bank.deposit(amount).send().await?;
     let _receipt2 = tx2.watch().await?;

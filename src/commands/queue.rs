@@ -10,7 +10,7 @@ use alloy::sol_types::{Eip712Domain, SolStruct};
 use anyhow::{Context, Result};
 
 use crate::commands::poll;
-use crate::contracts::{self, IClawDuel, JoinDuelAttestation};
+use crate::contracts::{self, ICompetition, JoinCompetitionAttestation};
 use crate::http::HttpClient;
 use crate::output::OutputFormat;
 use crate::security;
@@ -21,7 +21,7 @@ use crate::security;
 /// wait for resolution -> re-queue, for `games` total rounds.
 pub async fn execute(
     client: &HttpClient,
-    bet_tier_usdc: u64,
+    entry_fee_usdc: u64,
     timeout_secs: u64,
     address: &Address,
     signer: &PrivateKeySigner,
@@ -31,14 +31,14 @@ pub async fn execute(
 ) -> Result<()> {
     if games <= 1 {
         // Single game: original behavior (queue once, return immediately)
-        return queue_once(client, bet_tier_usdc, timeout_secs, address, signer, rpc_url, fmt)
+        return queue_once(client, entry_fee_usdc, timeout_secs, address, signer, rpc_url, fmt)
             .await;
     }
 
     // Multi-game sequential loop
     games_loop(
         client,
-        bet_tier_usdc,
+        entry_fee_usdc,
         timeout_secs,
         address,
         signer,
@@ -52,7 +52,7 @@ pub async fn execute(
 /// Run the sequential multi-game loop.
 async fn games_loop(
     client: &HttpClient,
-    bet_tier_usdc: u64,
+    entry_fee_usdc: u64,
     timeout_secs: u64,
     address: &Address,
     signer: &PrivateKeySigner,
@@ -68,7 +68,7 @@ async fn games_loop(
         }
 
         // Step 1: Queue for a duel
-        queue_once(client, bet_tier_usdc, timeout_secs, address, signer, rpc_url, fmt).await
+        queue_once(client, entry_fee_usdc, timeout_secs, address, signer, rpc_url, fmt).await
             .map_err(|e| {
                 if matches!(fmt, OutputFormat::Table) && game_num > 1 {
                     eprintln!("Completed {}/{games} games before error", game_num - 1);
@@ -161,7 +161,7 @@ async fn games_loop(
 /// Execute a single queue operation (sign EIP-712 attestation, POST to matchmaker).
 async fn queue_once(
     client: &HttpClient,
-    bet_tier_usdc: u64,
+    entry_fee_usdc: u64,
     timeout_secs: u64,
     address: &Address,
     signer: &PrivateKeySigner,
@@ -169,14 +169,14 @@ async fn queue_once(
     fmt: OutputFormat,
 ) -> Result<()> {
     if matches!(fmt, OutputFormat::Table) {
-        println!("Queuing for duel at {bet_tier_usdc} USDC tier...");
+        println!("Queuing for duel at {entry_fee_usdc} USDC tier...");
     }
 
-    let bet_tier = contracts::parse_usdc(bet_tier_usdc as f64);
+    let entry_fee = contracts::parse_usdc(entry_fee_usdc as f64);
     let provider = contracts::create_provider(rpc_url).await?;
 
     // Generate unused nonce
-    let nonce = generate_nonce(&provider, &contracts::claw_duel_address(), address).await?;
+    let nonce = generate_nonce(&provider, &contracts::competition_address(), address).await?;
 
     // Calculate deadline
     let now_secs = SystemTime::now()
@@ -196,14 +196,14 @@ async fn queue_once(
         name: Some("ClawDuel".into()),
         version: Some("1".into()),
         chain_id: Some(U256::from(chain_id)),
-        verifying_contract: Some(contracts::claw_duel_address()),
+        verifying_contract: Some(contracts::competition_address()),
         salt: None,
     };
 
     // Build attestation value
-    let attestation = JoinDuelAttestation {
+    let attestation = JoinCompetitionAttestation {
         agent: *address,
-        betTier: bet_tier,
+        entryFee: entry_fee,
         nonce,
         deadline,
     };
@@ -222,12 +222,12 @@ async fn queue_once(
 
     let body = serde_json::json!({
         "agentAddress": format!("{address:#x}"),
-        "betTier": bet_tier.to_string(),
+        "entryFee": entry_fee.to_string(),
         "signature": signature,
         "nonce": nonce.to_string(),
         "deadline": deadline.to_string(),
     });
-    let (status, response) = client.post("/duels/queue", &body).await?;
+    let (status, response) = client.post("/competitions/queue", &body).await?;
 
     let mut output = response.clone();
     output["status"] = serde_json::json!(status);
@@ -318,10 +318,10 @@ async fn wait_for_resolution(
 /// Generate a random unused nonce for attestations.
 async fn generate_nonce(
     provider: &impl Provider,
-    claw_duel_address: &Address,
+    competition_address: &Address,
     agent: &Address,
 ) -> Result<U256> {
-    let claw_duel = IClawDuel::new(*claw_duel_address, provider);
+    let claw_duel = ICompetition::new(*competition_address, provider);
 
     loop {
         // Generate random 32 bytes

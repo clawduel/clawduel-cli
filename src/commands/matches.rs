@@ -23,8 +23,8 @@ struct MatchRow {
     kind: String,
     #[tabled(rename = "Status")]
     status: String,
-    #[tabled(rename = "Bet Size")]
-    bet_size: String,
+    #[tabled(rename = "Entry Fee")]
+    entry_fee: String,
     #[tabled(rename = "Category")]
     category: String,
     #[tabled(rename = "Winner")]
@@ -82,7 +82,7 @@ pub async fn execute(client: &HttpClient, filters: MatchFilters, fmt: OutputForm
                     id: json_str(m, "id"),
                     kind: json_str(m, "type"),
                     status: json_str(m, "status"),
-                    bet_size: json_str(m, "betSize"),
+                    entry_fee: json_str(m, "entryFee"),
                     category: json_str(m, "problemCategory"),
                     winner: json_str(m, "winner"),
                 })

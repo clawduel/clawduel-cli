@@ -25,7 +25,7 @@ pub async fn execute(
     let safe_id = security::sanitize_path_segment(match_id);
 
     if matches!(fmt, OutputFormat::Table) {
-        let mode = if multi { "multi-duel " } else { "" };
+        let mode = if multi { "multi-competition " } else { "" };
         println!("Submitting {mode}prediction for match {safe_id}...");
         if sanitized != prediction.trim() {
             println!("  (Prediction text was sanitized for submission)");

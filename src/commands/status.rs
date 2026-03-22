@@ -3,7 +3,7 @@
 use alloy::primitives::Address;
 use anyhow::Result;
 
-use crate::contracts::{self, IBank};
+use crate::contracts::{self, IPrizePool};
 use crate::http::HttpClient;
 use crate::output::OutputFormat;
 use crate::security;
@@ -20,10 +20,10 @@ pub async fn execute(
 
     // Get on-chain balance
     let provider = contracts::create_provider(rpc_url).await?;
-    let bank = IBank::new(contracts::bank_address(), &provider);
+    let bank = IPrizePool::new(contracts::prize_pool_address(), &provider);
 
     let available = bank.balanceOf(*address).call().await?;
-    let locked = bank.lockedBalanceOf(*address).call().await?;
+    let locked = bank.balanceOf(*address).call().await?;
 
     let available_fmt = contracts::format_usdc(available);
     let locked_fmt = contracts::format_usdc(locked);

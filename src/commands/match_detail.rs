@@ -95,19 +95,19 @@ pub async fn fetch_match(client: &HttpClient, safe_id: &str) -> Result<serde_jso
 
 /// Display match details in the requested output format.
 fn display_match(data: &serde_json::Value, safe_id: &str, fmt: OutputFormat) -> Result<()> {
-    // Detect multi-duel matches by presence of a non-empty rankings array
-    let is_multi_duel = data
+    // Detect multi-competition matches by presence of a non-empty rankings array
+    let is_multi_competition = data
         .get("rankings")
         .and_then(|r| r.as_array())
         .map_or(false, |a| !a.is_empty());
 
-    if is_multi_duel {
+    if is_multi_competition {
         let rankings = data.get("rankings").and_then(|r| r.as_array()).unwrap();
         let result = serde_json::json!({
             "matchId": data.get("id").or_else(|| data.get("matchId")),
-            "type": "multi-duel",
+            "type": "multi-competition",
             "status": data.get("status"),
-            "betSize": format_usdc_from_value(data.get("betSize")),
+            "entryFee": format_usdc_from_value(data.get("entryFee")),
             "problemTitle": data.get("problemTitle"),
             "problemCategory": data.get("problemCategory"),
             "actualValue": data.get("actualValue"),
@@ -130,14 +130,14 @@ fn display_match(data: &serde_json::Value, safe_id: &str, fmt: OutputFormat) -> 
 
                 let mut header_rows = vec![
                     ("Match ID", match_display.to_string()),
-                    ("Type", "Multi-Duel".to_string()),
+                    ("Type", "Multi-Competition".to_string()),
                     ("Status", status_display.to_string()),
                 ];
                 if let Some(title) = result.get("problemTitle").and_then(|v| v.as_str()) {
                     header_rows.push(("Problem", title.to_string()));
                 }
-                if let Some(bet) = result.get("betSize").and_then(|v| v.as_str()) {
-                    header_rows.push(("Bet Size", bet.to_string()));
+                if let Some(bet) = result.get("entryFee").and_then(|v| v.as_str()) {
+                    header_rows.push(("Entry Fee", bet.to_string()));
                 }
                 if let Some(actual) = result.get("actualValue").and_then(|v| v.as_str()) {
                     header_rows.push(("Actual Value", actual.to_string()));
@@ -189,10 +189,10 @@ fn display_match(data: &serde_json::Value, safe_id: &str, fmt: OutputFormat) -> 
 
     let mut result = serde_json::json!({
         "matchId": data.get("id").or_else(|| data.get("matchId")),
-        "duelId": data.get("duelId"),
+        "competitionId": data.get("competitionId"),
         "status": data.get("status"),
         "agents": data.get("agents"),
-        "betSize": format_usdc_from_value(data.get("betSize")),
+        "entryFee": format_usdc_from_value(data.get("entryFee")),
         "problemTitle": data.get("problemTitle"),
         "problemCategory": data.get("problemCategory"),
         "problemPrompt": data.get("problemPrompt"),
@@ -246,8 +246,8 @@ fn display_match(data: &serde_json::Value, safe_id: &str, fmt: OutputFormat) -> 
             if let Some(title) = result.get("problemTitle").and_then(|v| v.as_str()) {
                 rows.push(("Problem", title.to_string()));
             }
-            if let Some(bet) = result.get("betSize").and_then(|v| v.as_str()) {
-                rows.push(("Bet Size", bet.to_string()));
+            if let Some(bet) = result.get("entryFee").and_then(|v| v.as_str()) {
+                rows.push(("Entry Fee", bet.to_string()));
             }
             if let Some(w) = result.get("winner").and_then(|v| v.as_str()) {
                 rows.push(("Winner", w.to_string()));

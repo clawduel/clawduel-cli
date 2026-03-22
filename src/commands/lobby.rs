@@ -12,7 +12,7 @@ use clap::{Args, Subcommand};
 use tabled::Tabled;
 
 use crate::commands::{match_detail, poll};
-use crate::contracts::{self, IMultiDuel, JoinMultiAttestation};
+use crate::contracts::{self, IMultiCompetition, JoinMultiCompetitionAttestation};
 use crate::http::HttpClient;
 use crate::output::OutputFormat;
 use crate::security;
@@ -25,10 +25,10 @@ pub struct LobbyArgs {
 
 #[derive(Subcommand)]
 pub enum LobbyCommand {
-    /// Create a new multi-duel lobby (auto-joins as first participant)
+    /// Create a new multi-competition lobby (auto-joins as first participant)
     Create {
         /// Bet size in USDC
-        bet_size: u64,
+        entry_fee: u64,
         /// Maximum participants (default: 5)
         #[arg(long, default_value = "5")]
         max_participants: u32,
@@ -48,7 +48,7 @@ pub enum LobbyCommand {
         #[arg(long, default_value = "600")]
         wait_timeout: u64,
     },
-    /// Join an existing multi-duel lobby
+    /// Join an existing multi-competition lobby
     Join {
         /// Lobby ID
         lobby_id: String,
@@ -122,7 +122,7 @@ pub async fn execute(
 ) -> Result<()> {
     match args.command {
         LobbyCommand::Create {
-            bet_size,
+            entry_fee,
             max_participants,
             timeout,
             wait,
@@ -132,7 +132,7 @@ pub async fn execute(
         } => {
             let lobby_id = cmd_create(
                 client,
-                bet_size,
+                entry_fee,
                 max_participants,
                 timeout,
                 address,
@@ -319,14 +319,14 @@ async fn wait_for_match_assignment(
         if let Some(m) = data.get("match") {
             let status = m.get("status").and_then(|s| s.as_str()).unwrap_or("");
             let has_problem = m.get("problem").map_or(false, |p| !p.is_null());
-            let duel_type = m
-                .get("duelType")
+            let competition_type = m
+                .get("competitionType")
                 .and_then(|d| d.as_str())
                 .unwrap_or("");
 
             if matches!(fmt, OutputFormat::Table) {
                 println!(
-                    "[{:>3}s] Match status: {status} (type: {duel_type})",
+                    "[{:>3}s] Match status: {status} (type: {competition_type})",
                     start.elapsed().as_secs()
                 );
             }
@@ -339,7 +339,7 @@ async fn wait_for_match_assignment(
                     .unwrap_or("unknown")
                     .to_string();
 
-                print_match_problem(m, &match_id, duel_type, fmt)?;
+                print_match_problem(m, &match_id, competition_type, fmt)?;
                 return Ok(Some(match_id));
             }
         } else if matches!(fmt, OutputFormat::Table) {
@@ -393,7 +393,7 @@ async fn wait_for_match_resolution(
 fn print_match_problem(
     m: &serde_json::Value,
     match_id: &str,
-    duel_type: &str,
+    competition_type: &str,
     fmt: OutputFormat,
 ) -> Result<()> {
     match fmt {
@@ -419,13 +419,13 @@ fn print_match_problem(
 
             crate::output::print_detail(vec![
                 ("Match ID", match_id.to_string()),
-                ("Type", duel_type.to_string()),
+                ("Type", competition_type.to_string()),
                 ("Problem", prompt.to_string()),
                 ("Answer Type", problem_type.to_string()),
                 ("Deadline", deadline),
             ]);
 
-            let multi_flag = if duel_type == "multiduel" {
+            let multi_flag = if competition_type == "multi_competition" {
                 " --multi"
             } else {
                 ""
@@ -440,13 +440,13 @@ fn print_match_problem(
 
 // ── Nonce / Signing ─────────────────────────────────────────────────
 
-/// Generate a random unused nonce for multi-duel attestations.
+/// Generate a random unused nonce for multi-competition attestations.
 async fn generate_nonce(
     provider: &impl Provider,
-    multi_duel_address: &Address,
+    multi_competition_address: &Address,
     agent: &Address,
 ) -> Result<U256> {
-    let multi_duel = IMultiDuel::new(*multi_duel_address, provider);
+    let multi_duel = IMultiCompetition::new(*multi_competition_address, provider);
 
     loop {
         let random_bytes: [u8; 32] = rand::random();
@@ -463,18 +463,18 @@ async fn generate_nonce(
     }
 }
 
-/// Sign a JoinMultiAttestation EIP-712 message.
+/// Sign a JoinMultiCompetitionAttestation EIP-712 message.
 ///
 /// Returns `(signature, nonce, deadline)`.
 async fn sign_multi_attestation(
-    bet_tier: U256,
+    entry_fee: U256,
     timeout_secs: u64,
     address: &Address,
     signer: &PrivateKeySigner,
     rpc_url: &str,
 ) -> Result<(String, U256, U256)> {
     let provider = contracts::create_provider(rpc_url).await?;
-    let nonce = generate_nonce(&provider, &contracts::multi_duel_address(), address).await?;
+    let nonce = generate_nonce(&provider, &contracts::multi_competition_address(), address).await?;
 
     let now_secs = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -491,14 +491,14 @@ async fn sign_multi_attestation(
         name: Some("ClawDuel".into()),
         version: Some("1".into()),
         chain_id: Some(U256::from(chain_id)),
-        verifying_contract: Some(contracts::multi_duel_address()),
+        verifying_contract: Some(contracts::multi_competition_address()),
         salt: None,
     };
 
-    let attestation = JoinMultiAttestation {
+    let attestation = JoinMultiCompetitionAttestation {
         agent: *address,
-        duelId: U256::ZERO,
-        betSize: bet_tier,
+        competitionId: U256::ZERO,
+        entryFee: entry_fee,
         nonce,
         deadline,
     };
@@ -515,10 +515,10 @@ async fn sign_multi_attestation(
 
 // ── Subcommand implementations ──────────────────────────────────────
 
-/// Create a new multi-duel lobby. Returns the lobby ID on success.
+/// Create a new multi-competition lobby. Returns the lobby ID on success.
 async fn cmd_create(
     client: &HttpClient,
-    bet_size: u64,
+    entry_fee: u64,
     max_participants: u32,
     timeout_secs: u64,
     address: &Address,
@@ -527,17 +527,17 @@ async fn cmd_create(
     fmt: OutputFormat,
 ) -> Result<Option<String>> {
     if matches!(fmt, OutputFormat::Table) {
-        println!("Creating multi-duel lobby at {bet_size} USDC tier...");
+        println!("Creating multi-competition lobby at {entry_fee} USDC tier...");
     }
 
-    let bet_tier = contracts::parse_usdc(bet_size as f64);
+    let entry_fee = contracts::parse_usdc(entry_fee as f64);
     let (signature, nonce, deadline) =
-        sign_multi_attestation(bet_tier, timeout_secs, address, signer, rpc_url).await?;
+        sign_multi_attestation(entry_fee, timeout_secs, address, signer, rpc_url).await?;
 
     let body = serde_json::json!({
         "agentAddress": format!("{address:#x}"),
-        "betSize": bet_tier.to_string(),
-        "betTier": bet_tier.to_string(),
+        "entryFee": entry_fee.to_string(),
+        "entryFee": entry_fee.to_string(),
         "maxParticipants": max_participants,
         "signature": signature,
         "nonce": nonce.to_string(),
@@ -579,7 +579,7 @@ async fn cmd_create(
     Ok(lobby_id)
 }
 
-/// Join an existing multi-duel lobby.
+/// Join an existing multi-competition lobby.
 async fn cmd_join(
     client: &HttpClient,
     lobby_id: &str,
@@ -601,21 +601,21 @@ async fn cmd_join(
         .await
         .context("Failed to fetch lobby details")?;
 
-    let bet_tier = lobby_data
-        .get("betSize")
-        .or_else(|| lobby_data.get("betTier"))
+    let entry_fee = lobby_data
+        .get("entryFee")
+        .or_else(|| lobby_data.get("entryFee"))
         .and_then(|v| v.as_str())
-        .context("Lobby response missing betSize field")?
+        .context("Lobby response missing entryFee field")?
         .parse::<U256>()
-        .context("Failed to parse lobby betSize")?;
+        .context("Failed to parse lobby entryFee")?;
 
     let (signature, nonce, deadline) =
-        sign_multi_attestation(bet_tier, timeout_secs, address, signer, rpc_url).await?;
+        sign_multi_attestation(entry_fee, timeout_secs, address, signer, rpc_url).await?;
 
     let body = serde_json::json!({
         "agentAddress": format!("{address:#x}"),
-        "betSize": bet_tier.to_string(),
-        "betTier": bet_tier.to_string(),
+        "entryFee": entry_fee.to_string(),
+        "entryFee": entry_fee.to_string(),
         "signature": signature,
         "nonce": nonce.to_string(),
         "deadline": deadline.to_string(),
@@ -657,8 +657,8 @@ async fn cmd_join(
 struct LobbyRow {
     #[tabled(rename = "Lobby ID")]
     lobby_id: String,
-    #[tabled(rename = "Bet Size")]
-    bet_size: String,
+    #[tabled(rename = "Entry Fee")]
+    entry_fee: String,
     #[tabled(rename = "Participants")]
     participants: String,
     #[tabled(rename = "Status")]
@@ -694,9 +694,9 @@ async fn cmd_list(client: &HttpClient, fmt: OutputFormat) -> Result<()> {
                         .unwrap_or("?")
                         .to_string();
 
-                    let bet_size = lobby
-                        .get("betSize")
-                        .or_else(|| lobby.get("betTier"))
+                    let entry_fee = lobby
+                        .get("entryFee")
+                        .or_else(|| lobby.get("entryFee"))
                         .and_then(|v| v.as_str())
                         .map(|s| {
                             s.parse::<U256>()
@@ -724,7 +724,7 @@ async fn cmd_list(client: &HttpClient, fmt: OutputFormat) -> Result<()> {
 
                     LobbyRow {
                         lobby_id,
-                        bet_size,
+                        entry_fee,
                         participants,
                         status,
                     }
@@ -810,9 +810,9 @@ async fn cmd_status(client: &HttpClient, lobby_id: &str, fmt: OutputFormat) -> R
                 .unwrap_or("?")
                 .to_string();
 
-            let bet_size = data
-                .get("betSize")
-                .or_else(|| data.get("betTier"))
+            let entry_fee = data
+                .get("entryFee")
+                .or_else(|| data.get("entryFee"))
                 .and_then(|v| v.as_str())
                 .map(|s| {
                     s.parse::<U256>()
@@ -867,7 +867,7 @@ async fn cmd_status(client: &HttpClient, lobby_id: &str, fmt: OutputFormat) -> R
 
             crate::output::print_detail(vec![
                 ("Lobby ID", id),
-                ("Bet Size", bet_size),
+                ("Entry Fee", entry_fee),
                 ("Max Participants", max_participants),
                 ("Current Participants", current_participants),
                 ("Status", status),

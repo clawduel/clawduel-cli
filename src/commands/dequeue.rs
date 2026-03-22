@@ -7,14 +7,14 @@ use crate::http::HttpClient;
 use crate::output::OutputFormat;
 
 /// Cancel queue entry for the given bet tier (in USDC).
-pub async fn execute(client: &HttpClient, bet_tier_usdc: u64, fmt: OutputFormat) -> Result<()> {
+pub async fn execute(client: &HttpClient, entry_fee_usdc: u64, fmt: OutputFormat) -> Result<()> {
     if matches!(fmt, OutputFormat::Table) {
-        println!("Cancelling queue for {bet_tier_usdc} USDC tier...");
+        println!("Cancelling queue for {entry_fee_usdc} USDC tier...");
     }
 
-    let bet_tier = contracts::parse_usdc(bet_tier_usdc as f64);
-    let body = serde_json::json!({ "betTier": bet_tier.to_string() });
-    let (status, response) = client.delete("/duels/queue", Some(&body)).await?;
+    let entry_fee = contracts::parse_usdc(entry_fee_usdc as f64);
+    let body = serde_json::json!({ "entryFee": entry_fee.to_string() });
+    let (status, response) = client.delete("/competitions/queue", Some(&body)).await?;
 
     let mut output = response.clone();
     output["status"] = serde_json::json!(status);
