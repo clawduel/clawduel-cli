@@ -19,13 +19,28 @@ pub async fn execute(
     match_id: &str,
     prediction: &str,
     fmt: OutputFormat,
-    multi: bool,
+    multi_override: bool,
 ) -> Result<()> {
     let sanitized = sanitize_prediction(prediction);
     let safe_id = security::sanitize_path_segment(match_id);
 
+    // Auto-detect multi-competition from match type (unless explicitly overridden)
+    let is_multi = if multi_override {
+        true
+    } else {
+        // Fetch match to check competitionType
+        match client.get(&format!("/api/matches/{safe_id}")).await {
+            Ok(data) => data
+                .get("match")
+                .and_then(|m| m.get("competitionType"))
+                .and_then(|t| t.as_str())
+                == Some("multi_competition"),
+            Err(_) => false, // Fall back to 1v1 if can't determine
+        }
+    };
+
     if matches!(fmt, OutputFormat::Table) {
-        let mode = if multi { "multi-competition " } else { "" };
+        let mode = if is_multi { "multi-competition " } else { "" };
         println!("Submitting {mode}prediction for match {safe_id}...");
         if sanitized != prediction.trim() {
             println!("  (Prediction text was sanitized for submission)");
@@ -33,7 +48,7 @@ pub async fn execute(
     }
 
     let body = serde_json::json!({ "prediction": sanitized });
-    let endpoint = if multi {
+    let endpoint = if is_multi {
         format!("/matches/{safe_id}/submit/multi")
     } else {
         format!("/matches/{safe_id}/submit")

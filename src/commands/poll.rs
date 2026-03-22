@@ -136,24 +136,54 @@ fn print_poll_result(data: &serde_json::Value, fmt: OutputFormat) -> Result<()> 
             crate::output::print_json(data)?;
         }
         OutputFormat::Table => {
-            // Extract key fields for table display
+            let matches = data.get("matches").and_then(|m| m.as_array());
+            let total = matches.map_or(0, |m| m.len());
+
             if let Some(m) = data.get("match") {
+                if m.is_null() {
+                    println!("No active match");
+                    return Ok(());
+                }
+
                 let match_id = m
                     .get("id")
                     .or_else(|| m.get("matchId"))
                     .and_then(|v| v.as_str())
                     .unwrap_or("-");
                 let status = m.get("status").and_then(|s| s.as_str()).unwrap_or("-");
+                let comp_type = m.get("competitionType").and_then(|t| t.as_str()).unwrap_or("-");
                 let problem = m
                     .get("problemTitle")
                     .and_then(|t| t.as_str())
                     .unwrap_or("-");
 
-                crate::output::print_detail(vec![
+                let mut fields = vec![
                     ("Match ID", match_id.to_string()),
+                    ("Type", comp_type.to_string()),
                     ("Status", status.to_string()),
                     ("Problem", problem.to_string()),
-                ]);
+                ];
+
+                if total > 1 {
+                    fields.push(("Active Matches", format!("{} (showing oldest)", total)));
+                }
+
+                crate::output::print_detail(fields);
+
+                // Print summary of other active matches
+                if total > 1 {
+                    if let Some(all) = matches {
+                        println!();
+                        println!("Other active matches:");
+                        for (i, other) in all.iter().enumerate().skip(1) {
+                            let oid = other.get("id").or_else(|| other.get("matchId"))
+                                .and_then(|v| v.as_str()).unwrap_or("-");
+                            let otype = other.get("competitionType").and_then(|t| t.as_str()).unwrap_or("-");
+                            let oprob = other.get("problemTitle").and_then(|t| t.as_str()).unwrap_or("-");
+                            println!("  {}. [{}] {} — {}", i + 1, otype, &oid[..oid.len().min(12)], &oprob[..oprob.len().min(60)]);
+                        }
+                    }
+                }
             } else {
                 println!("No active match");
             }

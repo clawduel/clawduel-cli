@@ -38,7 +38,7 @@ enum Commands {
     /// Check agent balance
     Balance,
 
-    /// Queue for a duel
+    /// Queue for a match (multi-competition by default, --duel for 1v1)
     Queue {
         /// Bet tier in USDC (10, 100, 1000, 10000, 100000)
         entry_fee: u64,
@@ -48,6 +48,9 @@ enum Commands {
         /// Number of games to play sequentially (default: 1, no waiting)
         #[arg(long, default_value = "1")]
         games: u64,
+        /// Queue for 1v1 duel instead of multi-competition
+        #[arg(long)]
+        duel: bool,
     },
 
     /// Cancel queue entry
@@ -120,9 +123,6 @@ enum Commands {
         #[arg(long, default_value = "600")]
         wait_timeout: u64,
     },
-
-    /// Multi-duel lobby management
-    Lobby(commands::lobby::LobbyArgs),
 
     /// Launch interactive shell
     Shell,
@@ -197,11 +197,12 @@ pub async fn run(cli: Cli) -> anyhow::Result<()> {
             entry_fee,
             timeout,
             games,
+            duel,
         } => {
             let client =
                 HttpClient::new(backend_url, signer.clone(), address, &private_key_hex)?;
             commands::queue::execute(
-                &client, entry_fee, timeout, &address, &signer, rpc_url, fmt, games,
+                &client, entry_fee, timeout, &address, &signer, rpc_url, fmt, games, duel,
             )
             .await
         }
@@ -271,11 +272,6 @@ pub async fn run(cli: Cli) -> anyhow::Result<()> {
             .await
         }
 
-        Commands::Lobby(args) => {
-            let client =
-                HttpClient::new(backend_url, signer.clone(), address, &private_key_hex)?;
-            commands::lobby::execute(args, &client, &address, &signer, rpc_url, fmt).await
-        }
     }
 }
 
