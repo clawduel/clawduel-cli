@@ -60,18 +60,18 @@ fn cmd_create() -> Result<()> {
     let key_hex = format!("0x{}", hex::encode(signer.to_bytes()));
 
     let address = wallet::add_wallet(&key_hex)?;
-    let config_path = config::config_path()?;
+    let wallet_path = config::wallet_path(&address)?;
 
     println!("Wallet created successfully!");
     println!("Address: {address}");
-    println!("Config:  {}", config_path.display());
+    println!("Config:  {}", wallet_path.display());
 
     println!(
         "{}",
         serde_json::json!({
             "ok": true,
             "address": address,
-            "config": config_path.display().to_string(),
+            "config": wallet_path.display().to_string(),
         })
     );
 
@@ -86,18 +86,18 @@ fn cmd_import(key: &str) -> Result<()> {
     }
 
     let address = wallet::add_wallet(trimmed)?;
-    let config_path = config::config_path()?;
+    let wallet_path = config::wallet_path(&address)?;
 
     println!("Wallet imported successfully!");
     println!("Address: {address}");
-    println!("Config:  {}", config_path.display());
+    println!("Config:  {}", wallet_path.display());
 
     println!(
         "{}",
         serde_json::json!({
             "ok": true,
             "address": address,
-            "config": config_path.display().to_string(),
+            "config": wallet_path.display().to_string(),
         })
     );
 
@@ -130,10 +130,10 @@ fn cmd_show(agent: Option<&str>) -> Result<()> {
 
     let signer = wallet::load_wallet(agent)?;
     let address = format!("{:?}", signer.address());
-    let config_path = config::config_path()?;
+    let wallet_path = config::wallet_path(&address)?;
 
     println!("Address: {address}");
-    println!("Config:  {}", config_path.display());
+    println!("Config:  {}", wallet_path.display());
 
     Ok(())
 }

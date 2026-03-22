@@ -13,8 +13,7 @@ pub async fn execute(client: &HttpClient, entry_fee_usdc: u64, fmt: OutputFormat
     }
 
     let entry_fee = contracts::parse_usdc(entry_fee_usdc as f64);
-    let body = serde_json::json!({ "entryFee": entry_fee.to_string() });
-    let (status, response) = client.delete("/competitions/queue", Some(&body)).await?;
+    let (status, response) = client.delete(&format!("/competitions/queue/{entry_fee}"), None::<&serde_json::Value>).await?;
 
     let mut output = response.clone();
     output["status"] = serde_json::json!(status);

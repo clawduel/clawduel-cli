@@ -1,19 +1,7 @@
-use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 
 use anyhow::{Context, Result};
-use serde::{Deserialize, Serialize};
-
-/// ClawDuel CLI configuration.
-///
-/// Stored at `~/.config/clawduel/config.json`.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct Config {
-    /// Map of address -> private_key (hex with 0x prefix).
-    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
-    pub wallets: HashMap<String, String>,
-}
 
 pub const BACKEND_URL: &str = "http://localhost:8787";
 pub const RPC_URL: &str = "http://localhost:8545";
@@ -24,49 +12,59 @@ pub fn config_dir() -> Result<PathBuf> {
     Ok(home.join(".config").join("clawduel"))
 }
 
-/// Returns the config file path (`~/.config/clawduel/config.json`).
-pub fn config_path() -> Result<PathBuf> {
-    Ok(config_dir()?.join("config.json"))
+/// Returns the wallets directory path (`~/.config/clawduel/wallets/`).
+pub fn wallets_dir() -> Result<PathBuf> {
+    Ok(config_dir()?.join("wallets"))
 }
 
-/// Load config from disk. Returns `Ok(None)` if no config file exists.
-pub fn load_config() -> Result<Option<Config>> {
-    let path = config_path()?;
-    load_config_from(&path)
-}
+/// Ensure the wallets directory exists with secure permissions.
+pub fn ensure_wallets_dir() -> Result<PathBuf> {
+    let dir = wallets_dir()?;
+    fs::create_dir_all(&dir).context("Failed to create wallets directory")?;
 
-/// Load config from a specific path (for testing).
-pub fn load_config_from(path: &std::path::Path) -> Result<Option<Config>> {
-    let data = match fs::read_to_string(path) {
-        Ok(d) => d,
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(None),
-        Err(e) => {
-            return Err(anyhow::anyhow!(e).context(format!("Failed to read {}", path.display())));
-        }
-    };
-    let config: Config = serde_json::from_str(&data)
-        .context(format!("Invalid JSON in config file {}", path.display()))?;
-    Ok(Some(config))
-}
-
-/// Save config to disk, creating directories with secure permissions.
-pub fn save_config(config: &Config) -> Result<()> {
-    save_config_to(config, &config_path()?)
-}
-
-/// Save config to a specific path (for testing).
-pub fn save_config_to(config: &Config, path: &std::path::Path) -> Result<()> {
-    if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent).context("Failed to create config directory")?;
-
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::PermissionsExt;
-            fs::set_permissions(parent, fs::Permissions::from_mode(0o700))?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let _ = fs::set_permissions(&dir, fs::Permissions::from_mode(0o700));
+        if let Some(parent) = dir.parent() {
+            let _ = fs::set_permissions(parent, fs::Permissions::from_mode(0o700));
         }
     }
 
-    let json = serde_json::to_string_pretty(config)?;
+    Ok(dir)
+}
+
+/// Returns the path for a wallet file: `~/.config/clawduel/wallets/<address>.json`
+pub fn wallet_path(address: &str) -> Result<PathBuf> {
+    let normalized = address.to_lowercase();
+    Ok(wallets_dir()?.join(format!("{normalized}.json")))
+}
+
+/// Read a single wallet's private key from its file.
+pub fn read_wallet(address: &str) -> Result<Option<String>> {
+    let path = wallet_path(address)?;
+    match fs::read_to_string(&path) {
+        Ok(data) => {
+            let val: serde_json::Value = serde_json::from_str(&data)
+                .context(format!("Invalid JSON in wallet file {}", path.display()))?;
+            Ok(val.get("privateKey").and_then(|v| v.as_str()).map(|s| s.to_string()))
+        }
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
+        Err(e) => Err(anyhow::anyhow!(e).context(format!("Failed to read {}", path.display()))),
+    }
+}
+
+/// Write a single wallet file. Each wallet is isolated — no lock contention.
+pub fn write_wallet(address: &str, private_key: &str) -> Result<()> {
+    let dir = ensure_wallets_dir()?;
+    let normalized = address.to_lowercase();
+    let path = dir.join(format!("{normalized}.json"));
+
+    let json = serde_json::json!({
+        "address": normalized,
+        "privateKey": private_key,
+    });
+    let data = serde_json::to_string_pretty(&json)?;
 
     #[cfg(unix)]
     {
@@ -77,83 +75,101 @@ pub fn save_config_to(config: &Config, path: &std::path::Path) -> Result<()> {
             .create(true)
             .truncate(true)
             .mode(0o600)
-            .open(path)
-            .context("Failed to create config file")?;
-        file.write_all(json.as_bytes())
-            .context("Failed to write config file")?;
+            .open(&path)
+            .context("Failed to create wallet file")?;
+        file.write_all(data.as_bytes())
+            .context("Failed to write wallet file")?;
     }
 
     #[cfg(not(unix))]
     {
-        fs::write(path, &json).context("Failed to write config file")?;
+        fs::write(&path, &data).context("Failed to write wallet file")?;
     }
 
     Ok(())
 }
 
-/// Atomically modify the config file with file locking.
-/// Acquires an exclusive lock, reads current state, applies the modifier, and writes back.
-/// Prevents concurrent writes from clobbering each other.
-pub fn modify_config_locked(modifier: impl FnOnce(&mut Config)) -> Result<()> {
-    let path = config_path()?;
-    modify_config_locked_at(&path, modifier)
+/// Delete a single wallet file.
+pub fn delete_wallet(address: &str) -> Result<bool> {
+    let path = wallet_path(address)?;
+    if path.exists() {
+        fs::remove_file(&path).context("Failed to delete wallet file")?;
+        Ok(true)
+    } else {
+        Ok(false)
+    }
 }
 
-/// Atomically modify config at a specific path with file locking.
-pub fn modify_config_locked_at(path: &std::path::Path, modifier: impl FnOnce(&mut Config)) -> Result<()> {
-    use fs2::FileExt;
-    use std::io::{Read as _, Seek, Write as _};
+/// List all wallet addresses by scanning the wallets directory.
+pub fn list_wallet_addresses() -> Result<Vec<String>> {
+    let dir = wallets_dir()?;
+    if !dir.exists() {
+        return Ok(Vec::new());
+    }
 
-    if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent).context("Failed to create config directory")?;
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::PermissionsExt;
-            let _ = fs::set_permissions(parent, fs::Permissions::from_mode(0o700));
+    let mut addresses = Vec::new();
+    for entry in fs::read_dir(&dir).context("Failed to read wallets directory")? {
+        let entry = entry?;
+        let name = entry.file_name();
+        let name_str = name.to_string_lossy();
+        if name_str.ends_with(".json") {
+            let addr = name_str.trim_end_matches(".json").to_string();
+            addresses.push(addr);
+        }
+    }
+    Ok(addresses)
+}
+
+/// Delete all wallet files.
+pub fn delete_all_wallets() -> Result<()> {
+    let dir = wallets_dir()?;
+    if dir.exists() {
+        fs::remove_dir_all(&dir).context("Failed to delete wallets directory")?;
+    }
+    // Also clean up legacy config.json if present
+    let legacy = config_dir()?.join("config.json");
+    if legacy.exists() {
+        let _ = fs::remove_file(&legacy);
+    }
+    Ok(())
+}
+
+/// Migrate from legacy config.json to per-wallet files (if needed).
+pub fn migrate_legacy_config() -> Result<()> {
+    let legacy_path = config_dir()?.join("config.json");
+    if !legacy_path.exists() {
+        return Ok(());
+    }
+
+    let data = fs::read_to_string(&legacy_path)?;
+
+    #[derive(serde::Deserialize)]
+    struct LegacyConfig {
+        #[serde(default)]
+        wallets: std::collections::HashMap<String, String>,
+    }
+
+    let legacy: LegacyConfig = match serde_json::from_str(&data) {
+        Ok(c) => c,
+        Err(_) => return Ok(()), // Not a valid legacy config, skip
+    };
+
+    if legacy.wallets.is_empty() {
+        return Ok(());
+    }
+
+    for (address, private_key) in &legacy.wallets {
+        // Only migrate if per-wallet file doesn't already exist
+        let path = wallet_path(address)?;
+        if !path.exists() {
+            write_wallet(address, private_key)?;
         }
     }
 
-    // Open or create the lock file
-    let lock_path = path.with_extension("lock");
-    let lock_file = fs::OpenOptions::new()
-        .write(true)
-        .create(true)
-        .truncate(false)
-        .open(&lock_path)
-        .context("Failed to open lock file")?;
-
-    // Acquire exclusive lock (blocks until available)
-    lock_file.lock_exclusive().context("Failed to acquire config lock")?;
-
-    // Read current config under lock
-    let mut cfg = load_config_from(path)?.unwrap_or_default();
-
-    // Apply modification
-    modifier(&mut cfg);
-
-    // Write back under lock
-    let json = serde_json::to_string_pretty(&cfg)?;
-
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::OpenOptionsExt;
-        let mut file = fs::OpenOptions::new()
-            .write(true)
-            .create(true)
-            .truncate(true)
-            .mode(0o600)
-            .open(path)
-            .context("Failed to create config file")?;
-        file.write_all(json.as_bytes()).context("Failed to write config file")?;
-    }
-
-    #[cfg(not(unix))]
-    {
-        fs::write(path, &json).context("Failed to write config file")?;
-    }
-
-    // Lock is released when lock_file is dropped
-    drop(lock_file);
+    // Remove legacy file after successful migration
+    let _ = fs::remove_file(&legacy_path);
+    let lock_path = legacy_path.with_extension("lock");
+    let _ = fs::remove_file(&lock_path);
 
     Ok(())
 }
