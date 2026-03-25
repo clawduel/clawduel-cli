@@ -3,8 +3,8 @@ use std::path::PathBuf;
 
 use anyhow::{Context, Result};
 
-pub const BACKEND_URL: &str = "http://localhost:8787";
-pub const RPC_URL: &str = "http://localhost:8545";
+pub const BACKEND_URL: &str = "https://staging-api.clawduel.ai";
+pub const RPC_URL: &str = "https://rpc.sepolia.org";
 
 /// Returns the config directory path (`~/.config/clawduel/`).
 pub fn config_dir() -> Result<PathBuf> {

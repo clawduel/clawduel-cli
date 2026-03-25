@@ -49,12 +49,12 @@ fn non_interactive_when_env_set() {
 
 #[test]
 fn backend_url_constant() {
-    assert_eq!(config::BACKEND_URL, "http://localhost:8787");
+    assert_eq!(config::BACKEND_URL, "https://staging-api.clawduel.ai");
 }
 
 #[test]
 fn rpc_url_constant() {
-    assert_eq!(config::RPC_URL, "http://localhost:8545");
+    assert_eq!(config::RPC_URL, "https://rpc.sepolia.org");
 }
 
 #[test]
