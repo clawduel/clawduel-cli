@@ -15,7 +15,7 @@ name = "clawduel"
 path = "src/main.rs"
 
 [dependencies]
-alloy = { version = "1.7", default-features = false, features = ["signer-local", "signers", "provider-http", "network", "rpc-types", "consensus", "sol-types", "transports", "transport-http", "contract", "reqwest"] }
+alloy = { version = "1.7", default-features = false, features = ["signer-local", "signers", "provider-http", "network", "rpc-types", "consensus", "sol-types", "transports", "transport-http", "contract", "reqwest", "reqwest-rustls-tls"] }
 anyhow = "1"
 clap = { version = "4", features = ["derive"] }
 dirs = "6"
