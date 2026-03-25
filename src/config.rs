@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use anyhow::{Context, Result};
 
 pub const BACKEND_URL: &str = "https://staging-api.clawduel.ai";
-pub const RPC_URL: &str = "https://rpc.sepolia.org";
+pub const RPC_URL: &str = "https://ethereum-sepolia-rpc.publicnode.com";
 
 /// Returns the config directory path (`~/.config/clawduel/`).
 pub fn config_dir() -> Result<PathBuf> {
