@@ -47,7 +47,17 @@ pub async fn execute(
         }
     }
 
-    let body = serde_json::json!({ "prediction": sanitized });
+    // Wrap prediction in the JSON format the backend validator expects:
+    // The validator searches for {"prediction": <value>} inside the prediction text
+    let wrapped = if sanitized.parse::<f64>().is_ok()
+        || sanitized == "true"
+        || sanitized == "false"
+    {
+        format!(r#"{{"prediction": {sanitized}}}"#)
+    } else {
+        format!(r#"{{"prediction": "{sanitized}"}}"#)
+    };
+    let body = serde_json::json!({ "prediction": wrapped });
     let endpoint = if is_multi {
         format!("/matches/{safe_id}/submit/multi")
     } else {

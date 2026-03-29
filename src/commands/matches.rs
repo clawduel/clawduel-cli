@@ -59,7 +59,7 @@ pub async fn execute(client: &HttpClient, filters: MatchFilters, fmt: OutputForm
     let data = client.get(&format!("/api/matches{qs}")).await?;
 
     let results = data
-        .get("results")
+        .get("matches")
         .and_then(|r| r.as_array())
         .cloned()
         .unwrap_or_default();
@@ -78,20 +78,27 @@ pub async fn execute(client: &HttpClient, filters: MatchFilters, fmt: OutputForm
         OutputFormat::Table => {
             let rows: Vec<MatchRow> = results
                 .iter()
-                .map(|m| MatchRow {
-                    id: json_str(m, "id"),
-                    kind: json_str(m, "type"),
-                    status: json_str(m, "status"),
-                    entry_fee: json_str(m, "entryFee"),
-                    category: json_str(m, "problemCategory"),
-                    winner: json_str(m, "winner"),
+                .map(|m| {
+                    let raw_fee = json_str(m, "entryFee");
+                    let fee_display = raw_fee
+                        .parse::<f64>()
+                        .map(|f| format!("{:.2} USDC", f / 1_000_000.0))
+                        .unwrap_or(raw_fee);
+                    MatchRow {
+                        id: json_str(m, "id"),
+                        kind: json_str(m, "competitionType"),
+                        status: json_str(m, "status"),
+                        entry_fee: fee_display,
+                        category: json_str(m, "oracleId"),
+                        winner: json_str(m, "winner"),
+                    }
                 })
                 .collect();
 
             let count = rows.len();
             let page = data.get("page").and_then(|p| p.as_u64()).unwrap_or(0);
             let total = data
-                .get("total")
+                .get("count")
                 .map(|t| t.to_string())
                 .unwrap_or_else(|| "?".to_string());
 

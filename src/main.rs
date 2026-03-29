@@ -45,9 +45,6 @@ enum Commands {
         /// Attestation timeout in seconds
         #[arg(long, default_value = "3600")]
         timeout: u64,
-        /// Number of games to play sequentially (default: 1, no waiting)
-        #[arg(long, default_value = "1")]
-        games: u64,
         /// Queue for 1v1 duel instead of multi-competition
         #[arg(long)]
         duel: bool,
@@ -75,10 +72,8 @@ enum Commands {
     /// Submit prediction for a match
     Submit {
         /// Match ID
-        #[arg(long)]
         match_id: String,
         /// Prediction value
-        #[arg(long)]
         prediction: String,
         /// Submit as multi-competition prediction (uses /submit/multi endpoint)
         #[arg(long)]
@@ -111,7 +106,6 @@ enum Commands {
     #[command(name = "match")]
     Match {
         /// Match ID
-        #[arg(long)]
         id: String,
         /// Wait until match is resolved
         #[arg(long)]
@@ -196,13 +190,12 @@ pub async fn run(cli: Cli) -> anyhow::Result<()> {
         Commands::Queue {
             entry_fee,
             timeout,
-            games,
             duel,
         } => {
             let client =
                 HttpClient::new(backend_url, signer.clone(), address, &private_key_hex)?;
             commands::queue::execute(
-                &client, entry_fee, timeout, &address, &signer, rpc_url, fmt, games, duel,
+                &client, entry_fee, timeout, &address, &signer, rpc_url, fmt, duel,
             )
             .await
         }

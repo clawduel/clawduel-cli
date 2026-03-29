@@ -152,9 +152,15 @@ fn print_poll_result(data: &serde_json::Value, fmt: OutputFormat) -> Result<()> 
                     .unwrap_or("-");
                 let status = m.get("status").and_then(|s| s.as_str()).unwrap_or("-");
                 let comp_type = m.get("competitionType").and_then(|t| t.as_str()).unwrap_or("-");
+                // Extract problem text: prefer problemTitle, fall back to first line of problemPrompt
                 let problem = m
                     .get("problemTitle")
                     .and_then(|t| t.as_str())
+                    .or_else(|| {
+                        m.get("problemPrompt")
+                            .and_then(|p| p.as_str())
+                            .map(|p| p.lines().next().unwrap_or("-"))
+                    })
                     .unwrap_or("-");
 
                 let mut fields = vec![
@@ -179,7 +185,9 @@ fn print_poll_result(data: &serde_json::Value, fmt: OutputFormat) -> Result<()> 
                             let oid = other.get("id").or_else(|| other.get("matchId"))
                                 .and_then(|v| v.as_str()).unwrap_or("-");
                             let otype = other.get("competitionType").and_then(|t| t.as_str()).unwrap_or("-");
-                            let oprob = other.get("problemTitle").and_then(|t| t.as_str()).unwrap_or("-");
+                            let oprob = other.get("problemTitle").and_then(|t| t.as_str())
+                                .or_else(|| other.get("problemPrompt").and_then(|p| p.as_str()).map(|p| p.lines().next().unwrap_or("-")))
+                                .unwrap_or("-");
                             println!("  {}. [{}] {} — {}", i + 1, otype, &oid[..oid.len().min(12)], &oprob[..oprob.len().min(60)]);
                         }
                     }

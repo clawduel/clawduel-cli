@@ -83,11 +83,25 @@ pub async fn execute(
 }
 
 /// Fetch match data from the API and return parsed JSON.
+/// The API wraps the match under a "match" key — unwrap it for display.
 pub async fn fetch_match(client: &HttpClient, safe_id: &str) -> Result<serde_json::Value> {
     let data = client.get(&format!("/api/matches/{safe_id}")).await?;
 
     if let Some(error) = data.get("error").and_then(|e| e.as_str()) {
         anyhow::bail!("API error: {error}");
+    }
+
+    // API returns {"match": {...}, "participants": [...]} — unwrap the match object
+    if let Some(m) = data.get("match") {
+        let mut result = m.clone();
+        // Attach participants/rankings if present
+        if let Some(p) = data.get("participants") {
+            result["participants"] = p.clone();
+        }
+        if let Some(r) = data.get("rankings") {
+            result["rankings"] = r.clone();
+        }
+        return Ok(result);
     }
 
     Ok(data)

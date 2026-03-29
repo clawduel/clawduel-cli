@@ -1,7 +1,7 @@
 //! Queue for matchmaking with EIP-712 attestation signing.
 //! Default: multi-competition (up to 20 players). Use --duel for 1v1.
 
-use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use alloy::primitives::{Address, U256};
 use alloy::providers::Provider;
@@ -10,20 +10,17 @@ use alloy::signers::Signer;
 use alloy::sol_types::{Eip712Domain, SolStruct};
 use anyhow::{Context, Result};
 
-use crate::commands::poll;
 use crate::contracts::{
     self, ICompetition, IMultiCompetition, JoinCompetitionAttestation,
     JoinMultiCompetitionAttestation,
 };
 use crate::http::HttpClient;
 use crate::output::OutputFormat;
-use crate::security;
 
 /// Queue for a match at the given bet tier with EIP-712 attestation.
 ///
 /// When `duel` is false (default), queues for multi-competition.
 /// When `duel` is true, queues for 1v1 duel.
-/// When `games > 1`, runs a sequential game loop.
 pub async fn execute(
     client: &HttpClient,
     entry_fee_usdc: u64,
@@ -32,110 +29,9 @@ pub async fn execute(
     signer: &PrivateKeySigner,
     rpc_url: &str,
     fmt: OutputFormat,
-    games: u64,
     duel: bool,
 ) -> Result<()> {
-    if games <= 1 {
-        return queue_once(client, entry_fee_usdc, timeout_secs, address, signer, rpc_url, fmt, duel)
-            .await;
-    }
-
-    games_loop(client, entry_fee_usdc, timeout_secs, address, signer, rpc_url, fmt, games, duel)
-        .await
-}
-
-/// Run the sequential multi-game loop.
-async fn games_loop(
-    client: &HttpClient,
-    entry_fee_usdc: u64,
-    timeout_secs: u64,
-    address: &Address,
-    signer: &PrivateKeySigner,
-    rpc_url: &str,
-    fmt: OutputFormat,
-    games: u64,
-    duel: bool,
-) -> Result<()> {
-    let mut results: Vec<serde_json::Value> = Vec::new();
-    let mode_label = if duel { "duel" } else { "competition" };
-
-    for game_num in 1..=games {
-        if matches!(fmt, OutputFormat::Table) {
-            println!("\n=== Game {game_num}/{games} ({mode_label}) ===");
-        }
-
-        queue_once(client, entry_fee_usdc, timeout_secs, address, signer, rpc_url, fmt, duel)
-            .await
-            .map_err(|e| {
-                if matches!(fmt, OutputFormat::Table) && game_num > 1 {
-                    eprintln!("Completed {}/{games} games before error", game_num - 1);
-                }
-                e
-            })?;
-
-        if matches!(fmt, OutputFormat::Table) {
-            println!("Waiting for match assignment...");
-        }
-
-        let match_data = wait_for_match(client, address, 3, 300).await.map_err(|e| {
-            if matches!(fmt, OutputFormat::Table) && game_num > 1 {
-                eprintln!("Completed {}/{games} games before error", game_num - 1);
-            }
-            e
-        })?;
-
-        let match_id = match_data
-            .get("match")
-            .and_then(|m| m.get("id").or_else(|| m.get("matchId")).and_then(|v| v.as_str()))
-            .unwrap_or("unknown");
-
-        if matches!(fmt, OutputFormat::Table) {
-            let problem = match_data
-                .get("match")
-                .and_then(|m| m.get("problemTitle").and_then(|t| t.as_str()))
-                .unwrap_or("unknown");
-            println!("Match assigned: {match_id} (problem: {problem})");
-        }
-
-        if matches!(fmt, OutputFormat::Table) {
-            println!("Waiting for match resolution...");
-        }
-
-        let resolved = wait_for_resolution(client, match_id, 10, 600).await.map_err(|e| {
-            if matches!(fmt, OutputFormat::Table) && game_num > 1 {
-                eprintln!("Completed {}/{games} games before error", game_num - 1);
-            }
-            e
-        })?;
-
-        let winner = resolved.get("winner").and_then(|w| w.as_str()).unwrap_or("draw");
-        let status = resolved.get("status").and_then(|s| s.as_str()).unwrap_or("unknown");
-
-        if matches!(fmt, OutputFormat::Table) {
-            println!("Game {game_num}: {status} - winner: {winner}");
-        }
-
-        results.push(serde_json::json!({
-            "game": game_num,
-            "matchId": match_id,
-            "status": status,
-            "winner": winner,
-        }));
-
-        if game_num < games {
-            tokio::time::sleep(Duration::from_secs(2)).await;
-        }
-    }
-
-    if matches!(fmt, OutputFormat::Json) {
-        crate::output::print_json(&serde_json::Value::Array(results))?;
-    }
-
-    if matches!(fmt, OutputFormat::Table) {
-        println!("\nAll {games} games completed.");
-    }
-
-    Ok(())
+    queue_once(client, entry_fee_usdc, timeout_secs, address, signer, rpc_url, fmt, duel).await
 }
 
 /// Execute a single queue operation.
@@ -310,47 +206,3 @@ async fn generate_multi_nonce(
     }
 }
 
-// ── Wait helpers ──────────────────────────────────────────────────────
-
-async fn wait_for_match(
-    client: &HttpClient,
-    address: &Address,
-    interval_secs: u64,
-    timeout_secs: u64,
-) -> Result<serde_json::Value> {
-    let start = Instant::now();
-    loop {
-        let data = poll::poll_once(client, address).await?;
-        if let Some(m) = data.get("match") {
-            let status = m.get("status").and_then(|s| s.as_str()).unwrap_or("");
-            let has_problem = m.get("problem").map_or(false, |p| !p.is_null());
-            if status == "waiting_submissions" && has_problem {
-                return Ok(data);
-            }
-        }
-        if start.elapsed().as_secs() > timeout_secs {
-            anyhow::bail!("Timeout waiting for match assignment after {}s", timeout_secs);
-        }
-        tokio::time::sleep(Duration::from_secs(interval_secs)).await;
-    }
-}
-
-async fn wait_for_resolution(
-    client: &HttpClient,
-    match_id: &str,
-    interval_secs: u64,
-    timeout_secs: u64,
-) -> Result<serde_json::Value> {
-    let start = Instant::now();
-    loop {
-        let safe_id = security::sanitize_path_segment(match_id);
-        let data = client.get(&format!("/api/matches/{safe_id}")).await?;
-        if data.get("status").and_then(|s| s.as_str()) == Some("resolved") {
-            return Ok(data);
-        }
-        if start.elapsed().as_secs() > timeout_secs {
-            anyhow::bail!("Timeout waiting for match resolution after {}s", timeout_secs);
-        }
-        tokio::time::sleep(Duration::from_secs(interval_secs)).await;
-    }
-}
