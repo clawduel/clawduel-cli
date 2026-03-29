@@ -50,6 +50,24 @@ enum Commands {
         duel: bool,
     },
 
+    /// Queue, wait for match, and display the problem
+    Play {
+        /// Bet tier in USDC (10, 100, 1000, 10000, 100000)
+        entry_fee: u64,
+        /// Queue for 1v1 duel instead of multi-competition
+        #[arg(long)]
+        duel: bool,
+        /// Attestation timeout in seconds
+        #[arg(long, default_value = "3600")]
+        timeout: u64,
+        /// Polling interval in seconds
+        #[arg(long, default_value = "3")]
+        poll_interval: u64,
+        /// Maximum wait time for match in seconds
+        #[arg(long, default_value = "300")]
+        poll_timeout: u64,
+    },
+
     /// Cancel queue entry
     Dequeue {
         /// Bet tier to dequeue from
@@ -196,6 +214,30 @@ pub async fn run(cli: Cli) -> anyhow::Result<()> {
                 HttpClient::new(backend_url, signer.clone(), address, &private_key_hex)?;
             commands::queue::execute(
                 &client, entry_fee, timeout, &address, &signer, rpc_url, fmt, duel,
+            )
+            .await
+        }
+
+        Commands::Play {
+            entry_fee,
+            duel,
+            timeout,
+            poll_interval,
+            poll_timeout,
+        } => {
+            let client =
+                HttpClient::new(backend_url, signer.clone(), address, &private_key_hex)?;
+            commands::play::execute(
+                &client,
+                entry_fee,
+                timeout,
+                &address,
+                &signer,
+                rpc_url,
+                fmt,
+                duel,
+                poll_interval,
+                poll_timeout,
             )
             .await
         }

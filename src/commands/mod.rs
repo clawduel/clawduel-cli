@@ -3,6 +3,7 @@ pub mod dequeue;
 pub mod deposit;
 pub mod match_detail;
 pub mod matches;
+pub mod play;
 pub mod poll;
 pub mod queue;
 pub mod register;
