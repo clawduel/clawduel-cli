@@ -86,13 +86,10 @@ pub async fn poll_once(client: &HttpClient, address: &Address) -> Result<serde_j
     if let Some(m) = data.get("match") {
         let status = m.get("status").and_then(|s| s.as_str()).unwrap_or("");
         let ready_url = m.get("readyUrl").and_then(|u| u.as_str());
-        let problem_is_null = m.get("problem").map_or(true, |p| p.is_null());
-
         if status == "waiting_ready" && ready_url.is_some() {
             let url_str = ready_url.unwrap();
-            let parsed = Url::parse(url_str).unwrap_or_else(|_| {
-                Url::parse(&format!("http://placeholder{url_str}")).unwrap()
-            });
+            let parsed = Url::parse(url_str)
+                .unwrap_or_else(|_| Url::parse(&format!("http://placeholder{url_str}")).unwrap());
             let path = parsed.path();
 
             let (resp_status, body) = client.post(path, &serde_json::json!({})).await?;
@@ -106,13 +103,11 @@ pub async fn poll_once(client: &HttpClient, address: &Address) -> Result<serde_j
                     .get("error")
                     .and_then(|e| e.as_str())
                     .unwrap_or("Unknown error");
-                eprintln!("Ready acknowledgement failed ({resp_status}): {error}");
+                anyhow::bail!("Ready acknowledgement failed ({resp_status}): {error}");
             }
 
             // Re-poll after ready acknowledgement
-            return client
-                .get(&format!("/matches/active/{safe_address}"))
-                .await;
+            return client.get(&format!("/matches/active/{safe_address}")).await;
         }
 
         // Both agents ready, waiting for synchronized start
@@ -121,9 +116,7 @@ pub async fn poll_once(client: &HttpClient, address: &Address) -> Result<serde_j
                 wait_until(starts_at).await;
             }
 
-            return client
-                .get(&format!("/matches/active/{safe_address}"))
-                .await;
+            return client.get(&format!("/matches/active/{safe_address}")).await;
         }
     }
 
@@ -151,7 +144,10 @@ fn print_poll_result(data: &serde_json::Value, fmt: OutputFormat) -> Result<()> 
                     .and_then(|v| v.as_str())
                     .unwrap_or("-");
                 let status = m.get("status").and_then(|s| s.as_str()).unwrap_or("-");
-                let comp_type = m.get("competitionType").and_then(|t| t.as_str()).unwrap_or("-");
+                let comp_type = m
+                    .get("competitionType")
+                    .and_then(|t| t.as_str())
+                    .unwrap_or("-");
                 // Extract problem text: prefer problemTitle, fall back to first line of problemPrompt
                 let problem = m
                     .get("problemTitle")
@@ -182,13 +178,32 @@ fn print_poll_result(data: &serde_json::Value, fmt: OutputFormat) -> Result<()> 
                         println!();
                         println!("Other active matches:");
                         for (i, other) in all.iter().enumerate().skip(1) {
-                            let oid = other.get("id").or_else(|| other.get("matchId"))
-                                .and_then(|v| v.as_str()).unwrap_or("-");
-                            let otype = other.get("competitionType").and_then(|t| t.as_str()).unwrap_or("-");
-                            let oprob = other.get("problemTitle").and_then(|t| t.as_str())
-                                .or_else(|| other.get("problemPrompt").and_then(|p| p.as_str()).map(|p| p.lines().next().unwrap_or("-")))
+                            let oid = other
+                                .get("id")
+                                .or_else(|| other.get("matchId"))
+                                .and_then(|v| v.as_str())
                                 .unwrap_or("-");
-                            println!("  {}. [{}] {} — {}", i + 1, otype, &oid[..oid.len().min(12)], &oprob[..oprob.len().min(60)]);
+                            let otype = other
+                                .get("competitionType")
+                                .and_then(|t| t.as_str())
+                                .unwrap_or("-");
+                            let oprob = other
+                                .get("problemTitle")
+                                .and_then(|t| t.as_str())
+                                .or_else(|| {
+                                    other
+                                        .get("problemPrompt")
+                                        .and_then(|p| p.as_str())
+                                        .map(|p| p.lines().next().unwrap_or("-"))
+                                })
+                                .unwrap_or("-");
+                            println!(
+                                "  {}. [{}] {} — {}",
+                                i + 1,
+                                otype,
+                                &oid[..oid.len().min(12)],
+                                &oprob[..oprob.len().min(60)]
+                            );
                         }
                     }
                 }

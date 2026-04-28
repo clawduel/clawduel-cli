@@ -4,7 +4,11 @@ use clap::{Parser, Subcommand};
 use clawduel_cli::{commands, config, http::HttpClient, output::OutputFormat, wallet};
 
 #[derive(Parser)]
-#[command(name = "clawduel", about = "ClawDuel Agent CLI - AI Agent Dueling Platform", version)]
+#[command(
+    name = "clawduel",
+    about = "ClawDuel Agent CLI - AI Agent Dueling Platform",
+    version
+)]
 pub struct Cli {
     #[command(subcommand)]
     command: Commands,
@@ -188,32 +192,40 @@ pub async fn run(cli: Cli) -> anyhow::Result<()> {
     let address = signer.address();
     let private_key_hex = hex::encode(signer.to_bytes());
 
-    let backend_url = config::BACKEND_URL;
-    let rpc_url = config::RPC_URL;
-
     match cli.command {
         Commands::Wallet(_) | Commands::Shell | Commands::Upgrade => unreachable!(),
 
         Commands::Register { nickname } => {
-            let client = HttpClient::new(backend_url, signer, address, &private_key_hex)?;
+            let client = HttpClient::new(config::BACKEND_URL, signer, address, &private_key_hex)?;
             commands::register::execute(&client, &nickname, fmt).await
         }
 
         Commands::Deposit { amount } => {
-            commands::deposit::execute(amount, &address, &signer, rpc_url, fmt).await
+            commands::deposit::execute(amount, &address, &signer, config::RPC_URL, fmt).await
         }
 
-        Commands::Balance => commands::balance::execute(&address, rpc_url, fmt).await,
+        Commands::Balance => commands::balance::execute(&address, config::RPC_URL, fmt).await,
 
         Commands::Queue {
             entry_fee,
             timeout,
             duel,
         } => {
-            let client =
-                HttpClient::new(backend_url, signer.clone(), address, &private_key_hex)?;
+            let client = HttpClient::new(
+                config::BACKEND_URL,
+                signer.clone(),
+                address,
+                &private_key_hex,
+            )?;
             commands::queue::execute(
-                &client, entry_fee, timeout, &address, &signer, rpc_url, fmt, duel,
+                &client,
+                entry_fee,
+                timeout,
+                &address,
+                &signer,
+                config::RPC_URL,
+                fmt,
+                duel,
             )
             .await
         }
@@ -225,15 +237,19 @@ pub async fn run(cli: Cli) -> anyhow::Result<()> {
             poll_interval,
             poll_timeout,
         } => {
-            let client =
-                HttpClient::new(backend_url, signer.clone(), address, &private_key_hex)?;
+            let client = HttpClient::new(
+                config::BACKEND_URL,
+                signer.clone(),
+                address,
+                &private_key_hex,
+            )?;
             commands::play::execute(
                 &client,
                 entry_fee,
                 timeout,
                 &address,
                 &signer,
-                rpc_url,
+                config::RPC_URL,
                 fmt,
                 duel,
                 poll_interval,
@@ -243,7 +259,7 @@ pub async fn run(cli: Cli) -> anyhow::Result<()> {
         }
 
         Commands::Dequeue { entry_fee } => {
-            let client = HttpClient::new(backend_url, signer, address, &private_key_hex)?;
+            let client = HttpClient::new(config::BACKEND_URL, signer, address, &private_key_hex)?;
             commands::dequeue::execute(&client, entry_fee, fmt).await
         }
 
@@ -252,9 +268,8 @@ pub async fn run(cli: Cli) -> anyhow::Result<()> {
             wait_interval,
             wait_timeout,
         } => {
-            let client = HttpClient::new(backend_url, signer, address, &private_key_hex)?;
-            commands::poll::execute(&client, &address, fmt, wait, wait_interval, wait_timeout)
-                .await
+            let client = HttpClient::new(config::BACKEND_URL, signer, address, &private_key_hex)?;
+            commands::poll::execute(&client, &address, fmt, wait, wait_interval, wait_timeout).await
         }
 
         Commands::Submit {
@@ -262,13 +277,13 @@ pub async fn run(cli: Cli) -> anyhow::Result<()> {
             prediction,
             multi,
         } => {
-            let client = HttpClient::new(backend_url, signer, address, &private_key_hex)?;
+            let client = HttpClient::new(config::BACKEND_URL, signer, address, &private_key_hex)?;
             commands::submit::execute(&client, &match_id, &prediction, fmt, multi).await
         }
 
         Commands::Status => {
-            let client = HttpClient::new(backend_url, signer, address, &private_key_hex)?;
-            commands::status::execute(&client, &address, rpc_url, fmt).await
+            let client = HttpClient::new(config::BACKEND_URL, signer, address, &private_key_hex)?;
+            commands::status::execute(&client, &address, config::RPC_URL, fmt).await
         }
 
         Commands::Matches {
@@ -278,7 +293,7 @@ pub async fn run(cli: Cli) -> anyhow::Result<()> {
             from,
             to,
         } => {
-            let client = HttpClient::new(backend_url, signer, address, &private_key_hex)?;
+            let client = HttpClient::new(config::BACKEND_URL, signer, address, &private_key_hex)?;
             let filters = commands::matches::MatchFilters {
                 status,
                 page,
@@ -295,7 +310,7 @@ pub async fn run(cli: Cli) -> anyhow::Result<()> {
             wait_interval,
             wait_timeout,
         } => {
-            let client = HttpClient::new(backend_url, signer, address, &private_key_hex)?;
+            let client = HttpClient::new(config::BACKEND_URL, signer, address, &private_key_hex)?;
             commands::match_detail::execute(
                 &client,
                 &id,
@@ -306,7 +321,6 @@ pub async fn run(cli: Cli) -> anyhow::Result<()> {
             )
             .await
         }
-
     }
 }
 

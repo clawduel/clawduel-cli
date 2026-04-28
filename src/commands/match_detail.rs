@@ -25,7 +25,7 @@ struct RankingRow {
 /// Show details for a single match.
 ///
 /// When `wait_for_resolution` is true, polls repeatedly until the match
-/// status is `resolved`, or until `timeout_secs` elapses.
+/// status is terminal, or until `timeout_secs` elapses.
 pub async fn execute(
     client: &HttpClient,
     match_id: &str,
@@ -50,12 +50,15 @@ pub async fn execute(
         let data = fetch_match(client, &safe_id).await?;
         let elapsed = start.elapsed();
 
-        let status = data.get("status").and_then(|s| s.as_str()).unwrap_or("unknown");
+        let status = data
+            .get("status")
+            .and_then(|s| s.as_str())
+            .unwrap_or("unknown");
 
-        if status == "resolved" {
+        if matches!(status, "resolved" | "draw" | "cancelled") {
             if matches!(fmt, OutputFormat::Table) {
                 println!(
-                    "[{:>3}s] Match resolved!",
+                    "[{:>3}s] Match reached terminal status: {status}",
                     elapsed.as_secs()
                 );
             }

@@ -33,10 +33,7 @@ pub fn print_detail(rows: Vec<(&str, String)>) {
         println!("(no data)");
         return;
     }
-    let data: Vec<[String; 2]> = rows
-        .into_iter()
-        .map(|(k, v)| [k.to_string(), v])
-        .collect();
+    let data: Vec<[String; 2]> = rows.into_iter().map(|(k, v)| [k.to_string(), v]).collect();
     let table = Table::from_iter(data).with(Style::rounded()).to_string();
     println!("{table}");
 }

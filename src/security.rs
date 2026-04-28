@@ -13,12 +13,10 @@ const MAX_TIMESTAMP_DRIFT_MS: u64 = 5 * 60 * 1000;
 
 // --- Detection patterns (all 7 from TypeScript CLI) ---
 
-static RE_ETH_KEY_0X: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"(?:^|[^a-fA-F0-9])0x[0-9a-fA-F]{64}(?:[^a-fA-F0-9]|$)").unwrap()
-});
-static RE_ETH_KEY_RAW: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"(?:^|[^a-fA-F0-9x])[0-9a-fA-F]{64}(?:[^a-fA-F0-9]|$)").unwrap()
-});
+static RE_ETH_KEY_0X: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(?:^|[^a-fA-F0-9])0x[0-9a-fA-F]{64}(?:[^a-fA-F0-9]|$)").unwrap());
+static RE_ETH_KEY_RAW: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(?:^|[^a-fA-F0-9x])[0-9a-fA-F]{64}(?:[^a-fA-F0-9]|$)").unwrap());
 static RE_MNEMONIC: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"(?:[a-z]{3,8}\s){11,23}[a-z]{3,8}").unwrap());
 static RE_XPRV: LazyLock<Regex> =
@@ -45,8 +43,7 @@ static RE_REDACT_XPRV: LazyLock<Regex> =
 
 // --- Path sanitization ---
 
-static RE_SAFE_PATH: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"[^a-zA-Z0-9\-_.]").unwrap());
+static RE_SAFE_PATH: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"[^a-zA-Z0-9\-_.]").unwrap());
 
 /// Named detection patterns, checked in order (matching TypeScript CLI).
 const PATTERN_NAMES: &[&str] = &[

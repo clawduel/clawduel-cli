@@ -37,10 +37,7 @@ pub async fn execute(
             crate::output::print_json(&output)?;
         }
         OutputFormat::Table => {
-            let nickname = data
-                .get("nickname")
-                .and_then(|n| n.as_str())
-                .unwrap_or("-");
+            let nickname = data.get("nickname").and_then(|n| n.as_str()).unwrap_or("-");
             let elo = data
                 .get("elo")
                 .map(|e| e.to_string())

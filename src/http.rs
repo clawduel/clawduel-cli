@@ -7,7 +7,7 @@ use std::time::Duration;
 
 use alloy::primitives::Address;
 use alloy::signers::local::PrivateKeySigner;
-use anyhow::{Context, Result};
+use anyhow::{Context, Result, bail};
 use reqwest::Method;
 use serde::Serialize;
 
@@ -93,6 +93,11 @@ impl HttpClient {
 
         if status.is_client_error() || status.is_server_error() {
             self.redact_error(&mut body);
+            let error = body
+                .get("error")
+                .and_then(|e| e.as_str())
+                .unwrap_or("Unknown error");
+            bail!("GET {path} failed ({status}): {error}");
         }
 
         Ok(body)
@@ -145,7 +150,9 @@ impl HttpClient {
         builder = self.with_auth(builder).await?;
 
         if let Some(json) = serialized_body {
-            builder = builder.body(json).header("Content-Type", "application/json");
+            builder = builder
+                .body(json)
+                .header("Content-Type", "application/json");
         }
 
         let response = builder.send().await.context("Request failed")?;

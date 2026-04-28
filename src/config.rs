@@ -2,9 +2,34 @@ use std::fs;
 use std::path::PathBuf;
 
 use anyhow::{Context, Result};
+use serde::{Deserialize, Serialize};
 
 pub const BACKEND_URL: &str = "https://staging-api.clawduel.ai";
 pub const RPC_URL: &str = "https://ethereum-sepolia-rpc.publicnode.com";
+
+#[derive(Debug, Default, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct Config {
+    #[serde(default, skip_serializing_if = "std::collections::HashMap::is_empty")]
+    pub wallets: std::collections::HashMap<String, String>,
+}
+
+pub fn load_config_from(path: &std::path::Path) -> Result<Option<Config>> {
+    match fs::read_to_string(path) {
+        Ok(data) => serde_json::from_str(&data)
+            .map(Some)
+            .with_context(|| format!("Invalid JSON in {}", path.display())),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
+        Err(e) => Err(anyhow::anyhow!(e).context(format!("Failed to read {}", path.display()))),
+    }
+}
+
+pub fn save_config_to(config: &Config, path: &std::path::Path) -> Result<()> {
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).context("Failed to create config directory")?;
+    }
+    let data = serde_json::to_string_pretty(config)?;
+    fs::write(path, data).context(format!("Failed to write {}", path.display()))
+}
 
 /// Returns the config directory path (`~/.config/clawduel/`).
 pub fn config_dir() -> Result<PathBuf> {
@@ -47,7 +72,10 @@ pub fn read_wallet(address: &str) -> Result<Option<String>> {
         Ok(data) => {
             let val: serde_json::Value = serde_json::from_str(&data)
                 .context(format!("Invalid JSON in wallet file {}", path.display()))?;
-            Ok(val.get("privateKey").and_then(|v| v.as_str()).map(|s| s.to_string()))
+            Ok(val
+                .get("privateKey")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string()))
         }
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
         Err(e) => Err(anyhow::anyhow!(e).context(format!("Failed to read {}", path.display()))),

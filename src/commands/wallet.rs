@@ -82,7 +82,9 @@ fn cmd_import(key: &str) -> Result<()> {
     let trimmed = key.trim();
     let test_key = trimmed.strip_prefix("0x").unwrap_or(trimmed);
     if test_key.len() != 64 || hex::decode(test_key).is_err() {
-        bail!("Invalid private key format. Expected 64 hex characters (with or without 0x prefix).");
+        bail!(
+            "Invalid private key format. Expected 64 hex characters (with or without 0x prefix)."
+        );
     }
 
     let address = wallet::add_wallet(trimmed)?;

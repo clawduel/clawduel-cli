@@ -34,9 +34,14 @@ fn save_then_load_config_roundtrip() {
     let original = config::Config { wallets };
 
     config::save_config_to(&original, &path).unwrap();
-    let loaded = config::load_config_from(&path).unwrap().expect("config should exist");
+    let loaded = config::load_config_from(&path)
+        .unwrap()
+        .expect("config should exist");
 
-    assert_eq!(loaded.wallets.get("0xabc").map(|s| s.as_str()), Some("0xkey123"));
+    assert_eq!(
+        loaded.wallets.get("0xabc").map(|s| s.as_str()),
+        Some("0xkey123")
+    );
 }
 
 #[test]
@@ -54,7 +59,23 @@ fn backend_url_constant() {
 
 #[test]
 fn rpc_url_constant() {
-    assert_eq!(config::RPC_URL, "https://ethereum-sepolia-rpc.publicnode.com");
+    assert_eq!(
+        config::RPC_URL,
+        "https://ethereum-sepolia-rpc.publicnode.com"
+    );
+}
+
+#[test]
+fn cli_has_no_vault_contract_surface() {
+    let contracts = include_str!("../src/contracts.rs");
+    let main = include_str!("../src/main.rs");
+
+    for source in [contracts, main] {
+        assert!(!source.contains("AgentVault"));
+        assert!(!source.contains("VaultFactory"));
+        assert!(!source.contains("VAULT"));
+        assert!(!source.contains("Vault"));
+    }
 }
 
 #[test]

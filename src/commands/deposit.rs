@@ -41,7 +41,10 @@ pub async fn execute(
     if matches!(fmt, OutputFormat::Table) {
         println!("Approving USDC...");
     }
-    let tx1 = usdc.approve(contracts::prize_pool_address(), amount).send().await?;
+    let tx1 = usdc
+        .approve(contracts::prize_pool_address(), amount)
+        .send()
+        .await?;
     let _receipt1 = tx1.watch().await?;
 
     // Deposit

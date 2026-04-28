@@ -104,8 +104,7 @@ pub fn execute(fmt: OutputFormat) -> anyhow::Result<()> {
         .or_else(|_| sudo_mv(exe_path, &backup))
         .context("Failed to replace binary (try running with sudo)")?;
 
-    if let Err(e) = fs::rename(&new_binary, exe_path).or_else(|_| sudo_mv(&new_binary, exe_path))
-    {
+    if let Err(e) = fs::rename(&new_binary, exe_path).or_else(|_| sudo_mv(&new_binary, exe_path)) {
         // Restore backup on failure
         let _ = fs::rename(&backup, exe_path);
         return Err(e).context("Failed to install new binary");
@@ -151,9 +150,7 @@ fn print_manual_upgrade(current_version: &str, fmt: OutputFormat) -> anyhow::Res
             println!("Could not check GitHub releases.");
             println!("To upgrade manually:");
             println!("  cargo install clawduel-cli --force");
-            println!(
-                "  # or download from https://github.com/{REPO}/releases"
-            );
+            println!("  # or download from https://github.com/{REPO}/releases");
         }
     }
     Ok(())

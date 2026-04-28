@@ -90,7 +90,11 @@ fn remove_wallet_by_address() {
 
     let wallets = wallet::list_wallets_from(&config_path).unwrap();
     assert_eq!(wallets.len(), 1);
-    assert!(!wallets.iter().any(|a| a.to_lowercase() == addr1.to_lowercase()));
+    assert!(
+        !wallets
+            .iter()
+            .any(|a| a.to_lowercase() == addr1.to_lowercase())
+    );
 }
 
 #[test]
@@ -99,7 +103,8 @@ fn remove_unknown_address_errors() {
     let config_path = dir.path().join("config.json");
 
     wallet::add_wallet_to(KEY1, &config_path).unwrap();
-    let result = wallet::remove_wallet_from("0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef", &config_path);
+    let result =
+        wallet::remove_wallet_from("0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef", &config_path);
     assert!(result.is_err());
 }
 

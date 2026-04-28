@@ -1,6 +1,6 @@
 //! Submit prediction for a match with text sanitization.
 
-use anyhow::Result;
+use anyhow::{Result, bail};
 
 use crate::http::HttpClient;
 use crate::output::OutputFormat;
@@ -30,11 +30,12 @@ pub async fn execute(
     } else {
         // Fetch match to check competitionType
         match client.get(&format!("/api/matches/{safe_id}")).await {
-            Ok(data) => data
-                .get("match")
-                .and_then(|m| m.get("competitionType"))
-                .and_then(|t| t.as_str())
-                == Some("multi_competition"),
+            Ok(data) => {
+                data.get("match")
+                    .and_then(|m| m.get("competitionType"))
+                    .and_then(|t| t.as_str())
+                    == Some("multi_competition")
+            }
             Err(_) => false, // Fall back to 1v1 if can't determine
         }
     };
@@ -49,9 +50,7 @@ pub async fn execute(
 
     // Wrap prediction in the JSON format the backend validator expects:
     // The validator searches for {"prediction": <value>} inside the prediction text
-    let wrapped = if sanitized.parse::<f64>().is_ok()
-        || sanitized == "true"
-        || sanitized == "false"
+    let wrapped = if sanitized.parse::<f64>().is_ok() || sanitized == "true" || sanitized == "false"
     {
         format!(r#"{{"prediction": {sanitized}}}"#)
     } else {
@@ -68,21 +67,17 @@ pub async fn execute(
     let mut output = response.clone();
     output["status"] = serde_json::json!(status);
 
+    if !(200..300).contains(&status) {
+        let error = response
+            .get("error")
+            .and_then(|e| e.as_str())
+            .unwrap_or("Unknown error");
+        bail!("Submission failed ({status}): {error}");
+    }
+
     match fmt {
-        OutputFormat::Json => {
-            crate::output::print_json(&output)?;
-        }
-        OutputFormat::Table => {
-            if (200..300).contains(&status) {
-                println!("OK: Prediction submitted");
-            } else {
-                let error = response
-                    .get("error")
-                    .and_then(|e| e.as_str())
-                    .unwrap_or("Unknown error");
-                eprintln!("Submission failed ({status}): {error}");
-            }
-        }
+        OutputFormat::Json => crate::output::print_json(&output)?,
+        OutputFormat::Table => println!("OK: Prediction submitted"),
     }
 
     Ok(())
@@ -165,10 +160,7 @@ mod tests {
 
     #[test]
     fn test_sanitize_limits_newlines() {
-        assert_eq!(
-            sanitize_prediction("hello\n\n\n\nworld"),
-            "hello\n\nworld"
-        );
+        assert_eq!(sanitize_prediction("hello\n\n\n\nworld"), "hello\n\nworld");
     }
 
     #[test]

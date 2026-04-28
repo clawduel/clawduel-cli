@@ -95,14 +95,23 @@ fn assert_no_secret_leak_body_with_0x_key() {
     let key = "0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef";
     let body = format!(r#"{{"data": "{}"}}"#, key);
     let result = security::assert_no_secret_leak(&body, key);
-    assert!(result.is_err(), "body containing 0x-prefixed own key should be blocked");
+    assert!(
+        result.is_err(),
+        "body containing 0x-prefixed own key should be blocked"
+    );
 }
 
 #[test]
 fn assert_no_secret_leak_body_with_mnemonic() {
     let body = r#"{"data": "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about"}"#;
-    let result = security::assert_no_secret_leak(body, "unrelatedkey1234567890abcdef1234567890abcdef1234567890abcdef1234");
-    assert!(result.is_err(), "body containing mnemonic should be blocked");
+    let result = security::assert_no_secret_leak(
+        body,
+        "unrelatedkey1234567890abcdef1234567890abcdef1234567890abcdef1234",
+    );
+    assert!(
+        result.is_err(),
+        "body containing mnemonic should be blocked"
+    );
 }
 
 // --- redact_secrets tests ---

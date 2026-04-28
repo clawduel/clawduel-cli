@@ -85,11 +85,7 @@ async fn auth_headers_signature_is_valid_eip191() {
     let addr_str = headers.get("X-Agent-Address").unwrap();
 
     // Reconstruct the message that was signed
-    let message = format!(
-        "ClawDuel:auth:{}:{}",
-        addr_str.to_lowercase(),
-        timestamp
-    );
+    let message = format!("ClawDuel:auth:{}:{}", addr_str.to_lowercase(), timestamp);
 
     // Parse the signature and recover the address
     let sig_bytes = hex::decode(sig_hex.strip_prefix("0x").unwrap_or(sig_hex)).unwrap();
@@ -113,8 +109,7 @@ async fn http_client_rejects_invalid_backend_url() {
     let address = signer.address();
     let pk_hex = hex::encode(signer.to_bytes());
 
-    let result =
-        clawduel_cli::http::HttpClient::new("ftp://evil.com", signer, address, &pk_hex);
+    let result = clawduel_cli::http::HttpClient::new("ftp://evil.com", signer, address, &pk_hex);
     assert!(result.is_err(), "should reject non-http URL");
 }
 
@@ -135,13 +130,9 @@ async fn http_client_post_blocks_secret_in_body() {
     let address = signer.address();
     let pk_hex = hex::encode(signer.to_bytes());
 
-    let client = clawduel_cli::http::HttpClient::new(
-        "http://localhost:8787",
-        signer,
-        address,
-        &pk_hex,
-    )
-    .unwrap();
+    let client =
+        clawduel_cli::http::HttpClient::new("http://localhost:8787", signer, address, &pk_hex)
+            .unwrap();
 
     // POST a body containing the private key - should be blocked BEFORE sending
     let body = serde_json::json!({ "data": pk_hex });
@@ -160,19 +151,12 @@ async fn http_client_post_blocks_mnemonic_in_body() {
     let address = signer.address();
     let pk_hex = hex::encode(signer.to_bytes());
 
-    let client = clawduel_cli::http::HttpClient::new(
-        "http://localhost:8787",
-        signer,
-        address,
-        &pk_hex,
-    )
-    .unwrap();
+    let client =
+        clawduel_cli::http::HttpClient::new("http://localhost:8787", signer, address, &pk_hex)
+            .unwrap();
 
     let mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
     let body = serde_json::json!({ "data": mnemonic });
     let result = client.post("/test", &body).await;
-    assert!(
-        result.is_err(),
-        "should block POST with mnemonic in body"
-    );
+    assert!(result.is_err(), "should block POST with mnemonic in body");
 }

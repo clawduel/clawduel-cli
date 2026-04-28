@@ -41,10 +41,7 @@ pub async fn run_shell() -> anyhow::Result<()> {
                         if let Err(e) = crate::run(cli).await {
                             match output {
                                 OutputFormat::Json => {
-                                    println!(
-                                        "{}",
-                                        serde_json::json!({"error": e.to_string()})
-                                    );
+                                    println!("{}", serde_json::json!({"error": e.to_string()}));
                                 }
                                 OutputFormat::Table => {
                                     eprintln!("Error: {e:#}");

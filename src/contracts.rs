@@ -84,9 +84,7 @@ pub fn multi_competition_address() -> Address {
 }
 
 /// Create an alloy HTTP provider from an RPC URL.
-pub async fn create_provider(
-    rpc_url: &str,
-) -> Result<impl Provider + Clone> {
+pub async fn create_provider(rpc_url: &str) -> Result<impl Provider + Clone> {
     let url = rpc_url
         .parse()
         .context(format!("Invalid RPC URL: {rpc_url}"))?;
