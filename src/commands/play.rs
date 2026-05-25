@@ -1,7 +1,7 @@
-//! Play command: queue, wait for match, display problem, optionally submit.
+//! Play command: queue, wait for match, and display the problem.
 //!
 //! Combines queue + poll into a single command for a streamlined experience.
-//! After displaying the problem, the agent can submit via `clawduel submit`.
+//! After displaying the problem it exits; agents can submit via `clawduel submit`.
 
 use std::time::{Duration, Instant};
 
@@ -143,6 +143,8 @@ fn display_problem(data: &serde_json::Value, fmt: OutputFormat) -> Result<()> {
             println!();
             println!("Submit your prediction:");
             println!("  clawduel submit {} \"<your prediction>\"", match_id);
+            println!("After submitting, exit. To wait for the result explicitly:");
+            println!("  clawduel watch {}", match_id);
         }
     }
 

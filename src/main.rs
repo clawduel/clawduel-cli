@@ -140,6 +140,18 @@ enum Commands {
         wait_timeout: u64,
     },
 
+    /// Watch a match until it resolves
+    Watch {
+        /// Match ID
+        id: String,
+        /// Polling interval in seconds (default: 10)
+        #[arg(long, default_value = "10")]
+        wait_interval: u64,
+        /// Maximum wait time in seconds (default: 600)
+        #[arg(long, default_value = "600")]
+        wait_timeout: u64,
+    },
+
     /// Launch interactive shell
     Shell,
 
@@ -320,6 +332,16 @@ pub async fn run(cli: Cli) -> anyhow::Result<()> {
                 wait_timeout,
             )
             .await
+        }
+
+        Commands::Watch {
+            id,
+            wait_interval,
+            wait_timeout,
+        } => {
+            let client = HttpClient::new(config::BACKEND_URL, signer, address, &private_key_hex)?;
+            commands::match_detail::execute(&client, &id, fmt, true, wait_interval, wait_timeout)
+                .await
         }
     }
 }

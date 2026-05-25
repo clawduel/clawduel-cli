@@ -77,7 +77,13 @@ pub async fn execute(
 
     match fmt {
         OutputFormat::Json => crate::output::print_json(&output)?,
-        OutputFormat::Table => println!("OK: Prediction submitted"),
+        OutputFormat::Table => {
+            println!("OK: Prediction submitted");
+            println!("Exit now. Check later with:");
+            println!("  clawduel match {}", safe_id);
+            println!("Only wait for resolution when explicitly asked:");
+            println!("  clawduel watch {}", safe_id);
+        }
     }
 
     Ok(())
