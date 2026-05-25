@@ -204,6 +204,9 @@ fn display_match(data: &serde_json::Value, safe_id: &str, fmt: OutputFormat) -> 
         return Ok(());
     }
 
+    let p1 = prediction_value(data, "agent1");
+    let p2 = prediction_value(data, "agent2");
+
     let mut result = serde_json::json!({
         "matchId": data.get("id").or_else(|| data.get("matchId")),
         "competitionId": data.get("competitionId"),
@@ -213,20 +216,18 @@ fn display_match(data: &serde_json::Value, safe_id: &str, fmt: OutputFormat) -> 
         "problemTitle": data.get("problemTitle"),
         "problemCategory": data.get("problemCategory"),
         "problemPrompt": data.get("problemPrompt"),
-        "predictions": data.get("predictions"),
+        "predictions": {
+            "agent1": p1,
+            "agent2": p2,
+        },
         "actualValue": data.get("actualValue"),
         "winner": data.get("winner"),
     });
 
     // Add resolution summary for resolved matches
     if data.get("status").and_then(|s| s.as_str()) == Some("resolved") {
-        let predictions = data.get("predictions");
-        let p1 = predictions
-            .and_then(|p| p.get("agent1"))
-            .and_then(|v| v.as_str());
-        let p2 = predictions
-            .and_then(|p| p.get("agent2"))
-            .and_then(|v| v.as_str());
+        let p1 = p1.as_deref();
+        let p2 = p2.as_deref();
         let actual = data.get("actualValue").and_then(|v| v.as_str());
         let winner = data
             .get("winner")
@@ -284,6 +285,17 @@ fn display_match(data: &serde_json::Value, safe_id: &str, fmt: OutputFormat) -> 
     Ok(())
 }
 
+fn prediction_value(data: &serde_json::Value, agent: &str) -> Option<String> {
+    data.get("predictions")
+        .and_then(|p| p.get(agent))
+        .and_then(|v| v.as_str())
+        .or_else(|| {
+            data.get(format!("{agent}Prediction"))
+                .and_then(|v| v.as_str())
+        })
+        .map(ToString::to_string)
+}
+
 fn compute_resolution(
     p1: Option<&str>,
     p2: Option<&str>,
@@ -339,4 +351,46 @@ fn format_usdc_from_value(value: Option<&serde_json::Value>) -> String {
     };
     let usdc = raw / 1_000_000.0;
     format!("{usdc:.2} USDC")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{compute_resolution, prediction_value};
+    use serde_json::json;
+
+    #[test]
+    fn reads_flat_prediction_fields_from_match_detail_api() {
+        let data = json!({
+            "agent1Prediction": "285",
+            "agent2Prediction": "279"
+        });
+
+        assert_eq!(prediction_value(&data, "agent1").as_deref(), Some("285"));
+        assert_eq!(prediction_value(&data, "agent2").as_deref(), Some("279"));
+    }
+
+    #[test]
+    fn reads_nested_prediction_fields_for_backward_compatibility() {
+        let data = json!({
+            "predictions": {
+                "agent1": "10",
+                "agent2": "12"
+            }
+        });
+
+        assert_eq!(prediction_value(&data, "agent1").as_deref(), Some("10"));
+        assert_eq!(prediction_value(&data, "agent2").as_deref(), Some("12"));
+    }
+
+    #[test]
+    fn resolved_match_with_flat_predictions_is_not_reported_as_no_submit_draw() {
+        let resolution = compute_resolution(
+            Some("285"),
+            Some("279"),
+            Some("279.2"),
+            &json!("0xaefd363321deeee778ea0932acbe7aecdf365347"),
+        );
+
+        assert_eq!(resolution["verdict"], "AGENT_2_CLOSER");
+    }
 }
