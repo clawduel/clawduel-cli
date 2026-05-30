@@ -223,13 +223,13 @@ fn resolve_deposit_amount(input: &str, balance: U256, fee_amount: U256) -> Resul
         return Ok(credit_amount);
     }
 
-    if credit_amount <= balance && balance > fee_amount {
-        return Ok(balance - fee_amount);
-    }
-
     let have = contracts::format_usdc(balance);
     let need = contracts::format_usdc(transfer_amount);
-    bail!("Insufficient USDC. Have {have}, need {need}");
+    bail!(
+        "Insufficient USDC. Have {have}, need {need} to deposit {} plus fee {}. Use `clawduel deposit all` to deposit the maximum available amount.",
+        contracts::format_usdc(credit_amount),
+        contracts::format_usdc(fee_amount)
+    );
 }
 
 #[cfg(test)]
@@ -254,15 +254,14 @@ mod tests {
     }
 
     #[test]
-    fn full_balance_number_is_adjusted_for_fee() {
-        let amount =
-            resolve_deposit_amount("10", U256::from(10_000_000u64), U256::from(100_000u64))
-                .unwrap();
-        assert_eq!(amount, U256::from(9_900_000u64));
+    fn numeric_amount_requires_fee_on_top() {
+        let result =
+            resolve_deposit_amount("10", U256::from(10_000_000u64), U256::from(100_000u64));
+        assert!(result.is_err());
     }
 
     #[test]
-    fn amount_that_includes_fee_uses_requested_amount() {
+    fn numeric_amount_credits_requested_amount_when_fee_is_available() {
         let amount =
             resolve_deposit_amount("9.9", U256::from(10_000_000u64), U256::from(100_000u64))
                 .unwrap();
