@@ -35,8 +35,8 @@ enum Commands {
 
     /// Deposit USDC to the bank
     Deposit {
-        /// Amount of USDC to deposit
-        amount: f64,
+        /// Amount of USDC to deposit, or "all" to deposit the maximum after fees
+        amount: String,
         /// Use legacy on-chain approve + deposit instead of gasless relay
         #[arg(long)]
         direct: bool,

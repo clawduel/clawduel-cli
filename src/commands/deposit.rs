@@ -15,7 +15,7 @@ use crate::output::OutputFormat;
 /// Deposit USDC. Gasless by default; use `direct` for approve + deposit.
 pub async fn execute(
     client: &HttpClient,
-    amount_usdc: f64,
+    amount_input: String,
     address: &Address,
     signer: &PrivateKeySigner,
     rpc_url: &str,
@@ -23,24 +23,23 @@ pub async fn execute(
     direct: bool,
 ) -> Result<()> {
     if direct {
-        return execute_direct(amount_usdc, address, signer, rpc_url, fmt).await;
+        return execute_direct(&amount_input, address, signer, rpc_url, fmt).await;
     }
-    execute_gasless(client, amount_usdc, address, signer, rpc_url, fmt).await
+    execute_gasless(client, &amount_input, address, signer, rpc_url, fmt).await
 }
 
 async fn execute_gasless(
     client: &HttpClient,
-    amount_usdc: f64,
+    amount_input: &str,
     address: &Address,
     signer: &PrivateKeySigner,
     rpc_url: &str,
     fmt: OutputFormat,
 ) -> Result<()> {
     if matches!(fmt, OutputFormat::Table) {
-        println!("Preparing gasless deposit of {amount_usdc} USDC...");
+        println!("Preparing gasless deposit of {amount_input} USDC...");
     }
 
-    let credit_amount = contracts::parse_usdc(amount_usdc);
     let config = client.get("/api/gasless/config").await?;
     let fee_amount = u256_from_json(&config, "depositFee")?;
     let auth_valid_seconds = config
@@ -62,14 +61,9 @@ async fn execute_gasless(
 
     let provider = contracts::create_provider(rpc_url).await?;
     let usdc = IERC20::new(usdc_address, &provider);
-    let transfer_amount = credit_amount + fee_amount;
-
     let balance = usdc.balanceOf(*address).call().await?;
-    if balance < transfer_amount {
-        let have = contracts::format_usdc(balance);
-        let need = contracts::format_usdc(transfer_amount);
-        bail!("Insufficient USDC. Have {have}, need {need}");
-    }
+    let credit_amount = resolve_deposit_amount(amount_input, balance, fee_amount)?;
+    let transfer_amount = credit_amount + fee_amount;
 
     let chain_id = config
         .get("chainId")
@@ -145,16 +139,19 @@ async fn execute_gasless(
 
 /// Legacy direct deposit: approve then deposit to the PrizePool.
 async fn execute_direct(
-    amount_usdc: f64,
+    amount_input: &str,
     address: &Address,
     signer: &PrivateKeySigner,
     rpc_url: &str,
     fmt: OutputFormat,
 ) -> Result<()> {
     if matches!(fmt, OutputFormat::Table) {
-        println!("Depositing {amount_usdc} USDC directly...");
+        println!("Depositing {amount_input} USDC directly...");
     }
 
+    let amount_usdc = amount_input
+        .parse::<f64>()
+        .with_context(|| format!("Invalid direct deposit amount: {amount_input}. Use a number."))?;
     let amount = contracts::parse_usdc(amount_usdc);
     let url: reqwest::Url = rpc_url.parse()?;
     let provider = alloy::providers::ProviderBuilder::new()
@@ -205,4 +202,76 @@ fn u256_from_json(value: &serde_json::Value, key: &str) -> Result<U256> {
         .and_then(|v| v.as_str())
         .with_context(|| format!("Missing {key} in response"))?;
     U256::from_str_radix(raw, 10).with_context(|| format!("Invalid {key}: {raw}"))
+}
+
+fn resolve_deposit_amount(input: &str, balance: U256, fee_amount: U256) -> Result<U256> {
+    if input.eq_ignore_ascii_case("all") || input.eq_ignore_ascii_case("max") {
+        if balance <= fee_amount {
+            let have = contracts::format_usdc(balance);
+            let fee = contracts::format_usdc(fee_amount);
+            bail!("Insufficient wallet USDC. Have {have}, need more than fee {fee}");
+        }
+        return Ok(balance - fee_amount);
+    }
+
+    let parsed = input
+        .parse::<f64>()
+        .with_context(|| format!("Invalid deposit amount: {input}. Use a number or 'all'."))?;
+    let credit_amount = contracts::parse_usdc(parsed);
+    let transfer_amount = credit_amount + fee_amount;
+    if balance >= transfer_amount {
+        return Ok(credit_amount);
+    }
+
+    if credit_amount <= balance && balance > fee_amount {
+        return Ok(balance - fee_amount);
+    }
+
+    let have = contracts::format_usdc(balance);
+    let need = contracts::format_usdc(transfer_amount);
+    bail!("Insufficient USDC. Have {have}, need {need}");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::resolve_deposit_amount;
+    use alloy::primitives::U256;
+
+    #[test]
+    fn all_deposits_balance_minus_fee() {
+        let amount =
+            resolve_deposit_amount("all", U256::from(10_000_000u64), U256::from(100_000u64))
+                .unwrap();
+        assert_eq!(amount, U256::from(9_900_000u64));
+    }
+
+    #[test]
+    fn max_deposits_balance_minus_fee() {
+        let amount =
+            resolve_deposit_amount("max", U256::from(10_000_000u64), U256::from(100_000u64))
+                .unwrap();
+        assert_eq!(amount, U256::from(9_900_000u64));
+    }
+
+    #[test]
+    fn full_balance_number_is_adjusted_for_fee() {
+        let amount =
+            resolve_deposit_amount("10", U256::from(10_000_000u64), U256::from(100_000u64))
+                .unwrap();
+        assert_eq!(amount, U256::from(9_900_000u64));
+    }
+
+    #[test]
+    fn amount_that_includes_fee_uses_requested_amount() {
+        let amount =
+            resolve_deposit_amount("9.9", U256::from(10_000_000u64), U256::from(100_000u64))
+                .unwrap();
+        assert_eq!(amount, U256::from(9_900_000u64));
+    }
+
+    #[test]
+    fn fails_when_balance_cannot_cover_fee() {
+        let result = resolve_deposit_amount("all", U256::from(100_000u64), U256::from(100_000u64));
+        assert!(result.is_err());
+    }
 }

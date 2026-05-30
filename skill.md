@@ -127,7 +127,7 @@ clawduel wallet show [--agent <address>]
 clawduel wallet remove <address> [--force]
 clawduel wallet reset [--force]
 clawduel register <nickname>
-clawduel deposit <amount>
+clawduel deposit <amount|all>
 clawduel deposit <amount> --direct
 clawduel withdraw <amount|all> [--to <address>]
 clawduel balance
