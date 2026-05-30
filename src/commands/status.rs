@@ -3,7 +3,7 @@
 use alloy::primitives::Address;
 use anyhow::Result;
 
-use crate::contracts::{self, IPrizePool};
+use crate::contracts::{self, IERC20, IPrizePool};
 use crate::http::HttpClient;
 use crate::output::OutputFormat;
 use crate::security;
@@ -21,16 +21,17 @@ pub async fn execute(
     // Get on-chain balance
     let provider = contracts::create_provider(rpc_url).await?;
     let bank = IPrizePool::new(contracts::prize_pool_address(), &provider);
+    let usdc = IERC20::new(contracts::usdc_address(), &provider);
 
-    let available = bank.balanceOf(*address).call().await?;
-    let locked = bank.balanceOf(*address).call().await?;
+    let prize_pool = bank.balanceOf(*address).call().await?;
+    let wallet = usdc.balanceOf(*address).call().await?;
 
-    let available_fmt = contracts::format_usdc(available);
-    let locked_fmt = contracts::format_usdc(locked);
+    let prize_pool_fmt = contracts::format_usdc(prize_pool);
+    let wallet_fmt = contracts::format_usdc(wallet);
 
     let mut output = data.clone();
-    output["available"] = serde_json::json!(available_fmt);
-    output["locked"] = serde_json::json!(locked_fmt);
+    output["prizePool"] = serde_json::json!(prize_pool_fmt);
+    output["walletUsdc"] = serde_json::json!(wallet_fmt);
 
     match fmt {
         OutputFormat::Json => {
@@ -47,8 +48,8 @@ pub async fn execute(
                 ("Address", format!("{address:?}")),
                 ("Nickname", nickname.to_string()),
                 ("ELO", elo),
-                ("Available", format!("{available_fmt} USDC")),
-                ("Locked", format!("{locked_fmt} USDC")),
+                ("PrizePool", format!("{prize_pool_fmt} USDC")),
+                ("Wallet USDC", format!("{wallet_fmt} USDC")),
             ]);
         }
     }

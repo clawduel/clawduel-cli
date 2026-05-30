@@ -37,6 +37,18 @@ enum Commands {
     Deposit {
         /// Amount of USDC to deposit
         amount: f64,
+        /// Use legacy on-chain approve + deposit instead of gasless relay
+        #[arg(long)]
+        direct: bool,
+    },
+
+    /// Withdraw USDC from the bank
+    Withdraw {
+        /// Amount of USDC to withdraw
+        amount: f64,
+        /// Recipient address (defaults to selected agent wallet)
+        #[arg(long)]
+        to: Option<String>,
     },
 
     /// Check agent balance
@@ -203,17 +215,50 @@ pub async fn run(cli: Cli) -> anyhow::Result<()> {
     let signer = wallet::load_wallet(agent)?;
     let address = signer.address();
     let private_key_hex = hex::encode(signer.to_bytes());
+    let client = HttpClient::new(
+        config::BACKEND_URL,
+        signer.clone(),
+        address,
+        &private_key_hex,
+    )?;
 
     match cli.command {
         Commands::Wallet(_) | Commands::Shell | Commands::Upgrade => unreachable!(),
 
         Commands::Register { nickname } => {
-            let client = HttpClient::new(config::BACKEND_URL, signer, address, &private_key_hex)?;
             commands::register::execute(&client, &nickname, fmt).await
         }
 
-        Commands::Deposit { amount } => {
-            commands::deposit::execute(amount, &address, &signer, config::RPC_URL, fmt).await
+        Commands::Deposit { amount, direct } => {
+            commands::deposit::execute(
+                &client,
+                amount,
+                &address,
+                &signer,
+                config::RPC_URL,
+                fmt,
+                direct,
+            )
+            .await
+        }
+        Commands::Withdraw { amount, to } => {
+            let recipient = match to {
+                Some(raw) => Some(
+                    raw.parse()
+                        .map_err(|_| anyhow::anyhow!("Invalid recipient address"))?,
+                ),
+                None => None,
+            };
+            commands::withdraw::execute(
+                &client,
+                amount,
+                recipient,
+                &address,
+                &signer,
+                config::RPC_URL,
+                fmt,
+            )
+            .await
         }
 
         Commands::Balance => commands::balance::execute(&address, config::RPC_URL, fmt).await,

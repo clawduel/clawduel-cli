@@ -11,3 +11,4 @@ pub mod status;
 pub mod submit;
 pub mod upgrade;
 pub mod wallet;
+pub mod withdraw;

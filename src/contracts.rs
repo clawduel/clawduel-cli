@@ -19,7 +19,9 @@ sol! {
     #[sol(rpc)]
     interface IPrizePool {
         function deposit(uint256 amount) external;
+        function withdraw(uint256 amount) external;
         function balanceOf(address account) external view returns (uint256);
+        function withdrawalNonces(address account) external view returns (uint256);
     }
 }
 
@@ -60,12 +62,36 @@ sol! {
     }
 }
 
+sol! {
+    #[derive(Debug)]
+    struct ReceiveWithAuthorization {
+        address from;
+        address to;
+        uint256 value;
+        uint256 validAfter;
+        uint256 validBefore;
+        bytes32 nonce;
+    }
+}
+
+sol! {
+    #[derive(Debug)]
+    struct WithdrawAuthorization {
+        address agent;
+        address recipient;
+        uint256 amount;
+        uint256 feeAmount;
+        uint256 nonce;
+        uint256 deadline;
+    }
+}
+
 // --- Contract addresses ---
 
-const PRIZE_POOL_ADDRESS: &str = "0xc7b6033466d8De8873969Ead695a68Ca9475e969";
-const COMPETITION_ADDRESS: &str = "0xeD26a2154cd5105B3085e2A9505C356CF18e0967";
-const USDC_ADDRESS: &str = "0x33d75da64De557365778aF6f4E56330f7872f93B";
-const MULTI_COMPETITION_ADDRESS: &str = "0x065a55B95F34D0D05623A9F8EDf6a35B9BBd923f";
+const PRIZE_POOL_ADDRESS: &str = "0x893e5128d22C12d7722b80C1c36f43191D349640";
+const COMPETITION_ADDRESS: &str = "0xB65394e35B51bb1bd073a288AE22dC3253bc7E66";
+const USDC_ADDRESS: &str = "0x17B9943fc741391D77f9cF3f3809169C493BaA80";
+const MULTI_COMPETITION_ADDRESS: &str = "0x28b29f752ca55bAe138e3355893081b64C1ce919";
 
 pub fn prize_pool_address() -> Address {
     PRIZE_POOL_ADDRESS.parse().unwrap()

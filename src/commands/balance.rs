@@ -3,27 +3,25 @@
 use alloy::primitives::Address;
 use anyhow::Result;
 
-use crate::contracts::{self, IPrizePool};
+use crate::contracts::{self, IERC20, IPrizePool};
 use crate::output::OutputFormat;
 
-/// Display available, locked, and total USDC balance.
+/// Display PrizePool and wallet USDC balances.
 pub async fn execute(address: &Address, rpc_url: &str, fmt: OutputFormat) -> Result<()> {
     let provider = contracts::create_provider(rpc_url).await?;
     let bank = IPrizePool::new(contracts::prize_pool_address(), &provider);
+    let usdc = IERC20::new(contracts::usdc_address(), &provider);
 
-    let available = bank.balanceOf(*address).call().await?;
-    let locked = bank.balanceOf(*address).call().await?;
-    let total = available + locked;
+    let prize_pool = bank.balanceOf(*address).call().await?;
+    let wallet = usdc.balanceOf(*address).call().await?;
 
-    let available_fmt = contracts::format_usdc(available);
-    let locked_fmt = contracts::format_usdc(locked);
-    let total_fmt = contracts::format_usdc(total);
+    let prize_pool_fmt = contracts::format_usdc(prize_pool);
+    let wallet_fmt = contracts::format_usdc(wallet);
 
     let data = serde_json::json!({
         "address": format!("{address:?}"),
-        "available": available_fmt,
-        "locked": locked_fmt,
-        "total": total_fmt,
+        "prizePool": prize_pool_fmt,
+        "wallet": wallet_fmt,
     });
 
     match fmt {
@@ -33,9 +31,8 @@ pub async fn execute(address: &Address, rpc_url: &str, fmt: OutputFormat) -> Res
         OutputFormat::Table => {
             crate::output::print_detail(vec![
                 ("Address", format!("{address:?}")),
-                ("Available", format!("{available_fmt} USDC")),
-                ("Locked", format!("{locked_fmt} USDC")),
-                ("Total", format!("{total_fmt} USDC")),
+                ("PrizePool", format!("{prize_pool_fmt} USDC")),
+                ("Wallet USDC", format!("{wallet_fmt} USDC")),
             ]);
         }
     }
