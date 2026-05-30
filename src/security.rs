@@ -6,6 +6,7 @@ use std::sync::LazyLock;
 
 use anyhow::{Result, bail};
 use regex::Regex;
+use serde_json::Value;
 use url::Url;
 
 /// Maximum allowed timestamp drift for auth (5 minutes).
@@ -82,17 +83,89 @@ pub fn detect_secret_leak(data: &str) -> Option<&'static str> {
 /// then checks pattern-based detection.
 pub fn assert_no_secret_leak(body: &str, private_key: &str) -> Result<()> {
     // Exact match against the agent's own private key
-    let raw_key = private_key.strip_prefix("0x").unwrap_or(private_key);
-    if body.contains(raw_key) {
-        bail!(
-            "SECURITY BLOCKED: Request body contains the agent's own private key. Request was NOT sent."
-        );
-    }
+    assert_no_private_key_exact(body, private_key)?;
 
     // Pattern-based detection
     if let Some(name) = detect_secret_leak(body) {
         bail!(
             "SECURITY BLOCKED: Request body appears to contain a secret ({name}). Request was NOT sent."
+        );
+    }
+
+    Ok(())
+}
+
+/// Assert that a JSON body does not leak secrets, while allowing protocol
+/// cryptographic fields to contain signatures/nonces that look like private keys.
+pub fn assert_no_secret_leak_json_protocol_fields(body: &str, private_key: &str) -> Result<()> {
+    assert_no_private_key_exact(body, private_key)?;
+
+    let value: Value = serde_json::from_str(body)?;
+    scan_json_for_secret_leaks(&value, None)?;
+    Ok(())
+}
+
+fn scan_json_for_secret_leaks(value: &Value, field_name: Option<&str>) -> Result<()> {
+    match value {
+        Value::Object(map) => {
+            for (key, child) in map {
+                scan_json_for_secret_leaks(child, Some(key))?;
+            }
+        }
+        Value::Array(values) => {
+            for child in values {
+                scan_json_for_secret_leaks(child, field_name)?;
+            }
+        }
+        Value::String(text) => {
+            if is_protocol_crypto_field(field_name) {
+                detect_non_private_key_secret(text)?;
+            } else if let Some(name) = detect_secret_leak(text) {
+                bail!(
+                    "SECURITY BLOCKED: Request body appears to contain a secret ({name}). Request was NOT sent."
+                );
+            }
+        }
+        _ => {}
+    }
+
+    Ok(())
+}
+
+fn is_protocol_crypto_field(field_name: Option<&str>) -> bool {
+    matches!(field_name, Some("nonce" | "signature"))
+}
+
+fn detect_non_private_key_secret(data: &str) -> Result<()> {
+    let patterns: &[(&LazyLock<Regex>, &str)] = &[
+        (&RE_MNEMONIC, "Mnemonic seed phrase"),
+        (&RE_XPRV, "Extended private key (xprv)"),
+        (&RE_SK_KEY, "API key (sk- prefix)"),
+        (&RE_SK_ANT_KEY, "API key (sk-ant- prefix)"),
+        (&RE_AWS_KEY, "AWS secret key"),
+    ];
+
+    for (re, name) in patterns {
+        if re.is_match(data) {
+            bail!(
+                "SECURITY BLOCKED: Request body appears to contain a secret ({name}). Request was NOT sent."
+            );
+        }
+    }
+
+    Ok(())
+}
+
+/// Assert that the body does not contain the agent's exact private key.
+///
+/// Gasless relays legitimately include ECDSA signatures and random nonces that
+/// can look like 32-byte private keys to broad regex scanners. Those endpoints
+/// still must never send the configured key itself.
+pub fn assert_no_private_key_exact(body: &str, private_key: &str) -> Result<()> {
+    let raw_key = private_key.strip_prefix("0x").unwrap_or(private_key);
+    if body.contains(raw_key) {
+        bail!(
+            "SECURITY BLOCKED: Request body contains the agent's own private key. Request was NOT sent."
         );
     }
 

@@ -140,7 +140,11 @@ impl HttpClient {
         // Serialize and scan body for secrets BEFORE sending
         let serialized_body = if let Some(b) = body {
             let json = serde_json::to_string(b).context("Failed to serialize request body")?;
-            security::assert_no_secret_leak(&json, &self.private_key_hex)?;
+            if matches!(path, "/api/deposits/gasless" | "/api/withdrawals/gasless") {
+                security::assert_no_secret_leak_json_protocol_fields(&json, &self.private_key_hex)?;
+            } else {
+                security::assert_no_secret_leak(&json, &self.private_key_hex)?;
+            }
             Some(json)
         } else {
             None

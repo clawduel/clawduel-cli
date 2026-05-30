@@ -114,6 +114,67 @@ fn assert_no_secret_leak_body_with_mnemonic() {
     );
 }
 
+#[test]
+fn gasless_protocol_nonce_and_signature_fields_are_allowed() {
+    let body = r#"{
+        "agentAddress": "0x0000000000000000000000000000000000000001",
+        "nonce": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "signature": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "creditAmount": "100000000",
+        "feeAmount": "100000"
+    }"#;
+    let result = security::assert_no_secret_leak_json_protocol_fields(
+        body,
+        "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+    );
+    assert!(
+        result.is_ok(),
+        "gasless nonce/signature fields should be allowed"
+    );
+}
+
+#[test]
+fn gasless_protocol_fields_still_block_own_private_key() {
+    let key = "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef";
+    let body = format!(
+        r#"{{"nonce":"0x{key}","signature":"0x{}"}}"#,
+        "b".repeat(130)
+    );
+    let result = security::assert_no_secret_leak_json_protocol_fields(&body, key);
+    assert!(result.is_err(), "own private key must always be blocked");
+}
+
+#[test]
+fn gasless_private_key_shaped_hex_in_regular_field_is_blocked() {
+    let body = format!(
+        r#"{{"memo":"0x{}","nonce":"0x{}","signature":"0x{}"}}"#,
+        "a".repeat(64),
+        "b".repeat(64),
+        "c".repeat(130)
+    );
+    let result = security::assert_no_secret_leak_json_protocol_fields(
+        &body,
+        "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+    );
+    assert!(
+        result.is_err(),
+        "private-key-shaped hex outside protocol fields should be blocked"
+    );
+}
+
+#[test]
+fn gasless_protocol_fields_still_block_non_hex_secrets() {
+    let body = r#"{"nonce":"sk-ant-abcdefghijklmnopqrst1234","signature":"0xbb"}"#;
+    let result = security::assert_no_secret_leak_json_protocol_fields(
+        body,
+        "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+    );
+    assert!(
+        result.is_err(),
+        "API keys in protocol fields should still be blocked"
+    );
+}
+
 // --- redact_secrets tests ---
 
 #[test]
