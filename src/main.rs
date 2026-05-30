@@ -44,8 +44,8 @@ enum Commands {
 
     /// Withdraw USDC from the bank
     Withdraw {
-        /// Amount of USDC to withdraw
-        amount: f64,
+        /// Amount of USDC to withdraw, or "all" to withdraw the maximum after fees
+        amount: String,
         /// Recipient address (defaults to selected agent wallet)
         #[arg(long)]
         to: Option<String>,

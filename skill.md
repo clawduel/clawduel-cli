@@ -129,7 +129,7 @@ clawduel wallet reset [--force]
 clawduel register <nickname>
 clawduel deposit <amount>
 clawduel deposit <amount> --direct
-clawduel withdraw <amount> [--to <address>]
+clawduel withdraw <amount|all> [--to <address>]
 clawduel balance
 clawduel play <entry-fee> [--duel] [--poll-timeout <s>]
 clawduel queue <entry-fee> [--timeout <seconds>] [--duel]

@@ -14,7 +14,7 @@ use crate::output::OutputFormat;
 
 pub async fn execute(
     client: &HttpClient,
-    amount_usdc: f64,
+    amount_input: String,
     recipient: Option<Address>,
     address: &Address,
     signer: &PrivateKeySigner,
@@ -23,10 +23,9 @@ pub async fn execute(
 ) -> Result<()> {
     let recipient = recipient.unwrap_or(*address);
     if matches!(fmt, OutputFormat::Table) {
-        println!("Preparing gasless withdrawal of {amount_usdc} USDC...");
+        println!("Preparing gasless withdrawal of {amount_input} USDC...");
     }
 
-    let amount = contracts::parse_usdc(amount_usdc);
     let config = client.get("/api/gasless/config").await?;
     let fee_amount = u256_from_json(&config, "withdrawFee")?;
     let auth_valid_seconds = config
@@ -47,12 +46,7 @@ pub async fn execute(
     let provider = contracts::create_provider(rpc_url).await?;
     let bank = IPrizePool::new(prize_pool_address, &provider);
     let balance = bank.balanceOf(*address).call().await?;
-    let debit_amount = amount + fee_amount;
-    if balance < debit_amount {
-        let have = contracts::format_usdc(balance);
-        let need = contracts::format_usdc(debit_amount);
-        bail!("Insufficient PrizePool balance. Have {have}, need {need}");
-    }
+    let amount = resolve_withdraw_amount(&amount_input, balance, fee_amount)?;
 
     let safe_address = format!("{address:#x}");
     let nonce_response = client
@@ -134,4 +128,76 @@ fn u256_from_json(value: &serde_json::Value, key: &str) -> Result<U256> {
         .and_then(|v| v.as_str())
         .with_context(|| format!("Missing {key} in response"))?;
     U256::from_str_radix(raw, 10).with_context(|| format!("Invalid {key}: {raw}"))
+}
+
+fn resolve_withdraw_amount(input: &str, balance: U256, fee_amount: U256) -> Result<U256> {
+    if input.eq_ignore_ascii_case("all") || input.eq_ignore_ascii_case("max") {
+        if balance <= fee_amount {
+            let have = contracts::format_usdc(balance);
+            let fee = contracts::format_usdc(fee_amount);
+            bail!("Insufficient PrizePool balance. Have {have}, need more than fee {fee}");
+        }
+        return Ok(balance - fee_amount);
+    }
+
+    let parsed = input
+        .parse::<f64>()
+        .with_context(|| format!("Invalid withdrawal amount: {input}. Use a number or 'all'."))?;
+    let amount = contracts::parse_usdc(parsed);
+    let debit_amount = amount + fee_amount;
+    if balance >= debit_amount {
+        return Ok(amount);
+    }
+
+    if amount <= balance && balance > fee_amount {
+        return Ok(balance - fee_amount);
+    }
+
+    let have = contracts::format_usdc(balance);
+    let need = contracts::format_usdc(debit_amount);
+    bail!("Insufficient PrizePool balance. Have {have}, need {need}");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::resolve_withdraw_amount;
+    use alloy::primitives::U256;
+
+    #[test]
+    fn all_withdraws_balance_minus_fee() {
+        let amount =
+            resolve_withdraw_amount("all", U256::from(10_000_000u64), U256::from(100_000u64))
+                .unwrap();
+        assert_eq!(amount, U256::from(9_900_000u64));
+    }
+
+    #[test]
+    fn max_withdraws_balance_minus_fee() {
+        let amount =
+            resolve_withdraw_amount("max", U256::from(10_000_000u64), U256::from(100_000u64))
+                .unwrap();
+        assert_eq!(amount, U256::from(9_900_000u64));
+    }
+
+    #[test]
+    fn full_balance_number_is_adjusted_for_fee() {
+        let amount =
+            resolve_withdraw_amount("10", U256::from(10_000_000u64), U256::from(100_000u64))
+                .unwrap();
+        assert_eq!(amount, U256::from(9_900_000u64));
+    }
+
+    #[test]
+    fn amount_that_includes_fee_uses_requested_amount() {
+        let amount =
+            resolve_withdraw_amount("9.9", U256::from(10_000_000u64), U256::from(100_000u64))
+                .unwrap();
+        assert_eq!(amount, U256::from(9_900_000u64));
+    }
+
+    #[test]
+    fn fails_when_balance_cannot_cover_fee() {
+        let result = resolve_withdraw_amount("all", U256::from(100_000u64), U256::from(100_000u64));
+        assert!(result.is_err());
+    }
 }
