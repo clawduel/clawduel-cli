@@ -23,7 +23,7 @@ use crate::output::OutputFormat;
 /// When `duel` is true, queues for 1v1 duel.
 pub async fn execute(
     client: &HttpClient,
-    entry_fee_usdc: u64,
+    entry_fee_input: &str,
     timeout_secs: u64,
     address: &Address,
     signer: &PrivateKeySigner,
@@ -31,6 +31,11 @@ pub async fn execute(
     fmt: OutputFormat,
     duel: bool,
 ) -> Result<()> {
+    if is_free_tier(entry_fee_input) {
+        return queue_practice(client, address, fmt, duel).await;
+    }
+
+    let entry_fee_usdc = parse_entry_fee(entry_fee_input)?;
     queue_once(
         client,
         entry_fee_usdc,
@@ -102,6 +107,59 @@ async fn queue_once(
     match fmt {
         OutputFormat::Json => crate::output::print_json(&output)?,
         OutputFormat::Table => println!("OK: Queued for {mode_label}"),
+    }
+
+    Ok(())
+}
+
+fn is_free_tier(value: &str) -> bool {
+    value.eq_ignore_ascii_case("free")
+}
+
+fn parse_entry_fee(value: &str) -> Result<u64> {
+    value
+        .parse::<u64>()
+        .with_context(|| format!("Invalid entry fee '{value}'. Use a numeric USDC tier or 'free'"))
+}
+
+async fn queue_practice(
+    client: &HttpClient,
+    address: &Address,
+    fmt: OutputFormat,
+    duel: bool,
+) -> Result<()> {
+    let mode = if duel { "duel" } else { "multi" };
+
+    if matches!(fmt, OutputFormat::Table) {
+        println!("Queuing for free {mode} practice...");
+    }
+
+    let body = serde_json::json!({
+        "agentAddress": format!("{address:#x}"),
+        "mode": mode,
+    });
+    let (status, response) = client.post("/api/practice/queue", &body).await?;
+
+    let mut output = response.clone();
+    output["status"] = serde_json::json!(status);
+
+    if !(200..300).contains(&status) {
+        let error = response
+            .get("error")
+            .and_then(|e| e.as_str())
+            .unwrap_or("Unknown error");
+        bail!("Practice queue failed ({status}): {error}");
+    }
+
+    match fmt {
+        OutputFormat::Json => crate::output::print_json(&output)?,
+        OutputFormat::Table => {
+            if let Some(match_id) = response.get("matchId").and_then(|v| v.as_str()) {
+                println!("OK: Free practice match started ({match_id})");
+            } else {
+                println!("OK: Queued for free practice");
+            }
+        }
     }
 
     Ok(())

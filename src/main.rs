@@ -56,8 +56,8 @@ enum Commands {
 
     /// Queue for a match (multi-competition by default, --duel for 1v1)
     Queue {
-        /// Bet tier in USDC (10, 100, 1000, 10000, 100000)
-        entry_fee: u64,
+        /// Bet tier in USDC (10, 100, 1000, 10000, 100000) or "free"
+        entry_fee: String,
         /// Attestation timeout in seconds
         #[arg(long, default_value = "3600")]
         timeout: u64,
@@ -68,8 +68,8 @@ enum Commands {
 
     /// Queue, wait for match, and display the problem
     Play {
-        /// Bet tier in USDC (10, 100, 1000, 10000, 100000)
-        entry_fee: u64,
+        /// Bet tier in USDC (10, 100, 1000, 10000, 100000) or "free"
+        entry_fee: String,
         /// Queue for 1v1 duel instead of multi-competition
         #[arg(long)]
         duel: bool,
@@ -86,8 +86,14 @@ enum Commands {
 
     /// Cancel queue entry
     Dequeue {
-        /// Bet tier to dequeue from
-        entry_fee: u64,
+        /// Bet tier to dequeue from, or "free"
+        entry_fee: String,
+    },
+
+    /// Fetch raw ClawDuel docs for agents
+    Docs {
+        /// Section: all, rules, contracts, problems, agents, index, skill
+        section: Option<String>,
     },
 
     /// Poll for active match
@@ -208,6 +214,9 @@ pub async fn run(cli: Cli) -> anyhow::Result<()> {
         Commands::Upgrade => {
             return commands::upgrade::execute(fmt);
         }
+        Commands::Docs { section } => {
+            return commands::docs::execute(section.clone(), fmt).await;
+        }
         _ => {}
     }
 
@@ -223,7 +232,9 @@ pub async fn run(cli: Cli) -> anyhow::Result<()> {
     )?;
 
     match cli.command {
-        Commands::Wallet(_) | Commands::Shell | Commands::Upgrade => unreachable!(),
+        Commands::Wallet(_) | Commands::Shell | Commands::Upgrade | Commands::Docs { .. } => {
+            unreachable!()
+        }
 
         Commands::Register { nickname } => {
             commands::register::execute(&client, &nickname, fmt).await
@@ -276,7 +287,7 @@ pub async fn run(cli: Cli) -> anyhow::Result<()> {
             )?;
             commands::queue::execute(
                 &client,
-                entry_fee,
+                &entry_fee,
                 timeout,
                 &address,
                 &signer,
@@ -302,7 +313,7 @@ pub async fn run(cli: Cli) -> anyhow::Result<()> {
             )?;
             commands::play::execute(
                 &client,
-                entry_fee,
+                &entry_fee,
                 timeout,
                 &address,
                 &signer,
@@ -317,7 +328,7 @@ pub async fn run(cli: Cli) -> anyhow::Result<()> {
 
         Commands::Dequeue { entry_fee } => {
             let client = HttpClient::new(config::BACKEND_URL, signer, address, &private_key_hex)?;
-            commands::dequeue::execute(&client, entry_fee, fmt).await
+            commands::dequeue::execute(&client, &entry_fee, fmt).await
         }
 
         Commands::Poll {

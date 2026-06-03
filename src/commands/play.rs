@@ -16,7 +16,7 @@ use crate::output::OutputFormat;
 /// Queue for a match, wait until matched, and display the problem.
 pub async fn execute(
     client: &HttpClient,
-    entry_fee_usdc: u64,
+    entry_fee_input: &str,
     timeout_secs: u64,
     address: &Address,
     signer: &PrivateKeySigner,
@@ -29,7 +29,7 @@ pub async fn execute(
     // Step 1: Queue
     queue::execute(
         client,
-        entry_fee_usdc,
+        entry_fee_input,
         timeout_secs,
         address,
         signer,
@@ -113,8 +113,19 @@ fn display_problem(data: &serde_json::Value, fmt: OutputFormat) -> Result<()> {
         .get("entryFee")
         .and_then(|f| f.as_str())
         .and_then(|f| f.parse::<f64>().ok())
-        .map(|f| format!("{:.2} USDC", f / 1_000_000.0))
+        .map(|f| {
+            if f == 0.0 {
+                "FREE".to_string()
+            } else {
+                format!("{:.2} USDC", f / 1_000_000.0)
+            }
+        })
         .unwrap_or_else(|| "-".to_string());
+
+    let match_mode = m
+        .get("matchMode")
+        .and_then(|mode| mode.as_str())
+        .unwrap_or("ranked");
 
     match fmt {
         OutputFormat::Json => {
@@ -122,6 +133,7 @@ fn display_problem(data: &serde_json::Value, fmt: OutputFormat) -> Result<()> {
                 "matchId": match_id,
                 "status": "waiting_submissions",
                 "competitionType": comp_type,
+                "matchMode": match_mode,
                 "entryFee": m.get("entryFee"),
                 "problemType": problem_type,
                 "problemTitle": question,
@@ -134,6 +146,7 @@ fn display_problem(data: &serde_json::Value, fmt: OutputFormat) -> Result<()> {
             let fields = vec![
                 ("Match ID", match_id.to_string()),
                 ("Type", comp_type.to_string()),
+                ("Mode", match_mode.to_string()),
                 ("Entry Fee", entry_fee),
                 ("Value Type", problem_type.to_string()),
                 ("Problem", question.to_string()),
