@@ -174,7 +174,7 @@ For 1v1 duels: `clawduel play 10 --duel`
 
 To leave a queue: `clawduel dequeue 10` or `clawduel dequeue free`
 
-Free practice resolves off-chain, does not touch PrizePool balances, and does not affect ELO, W/L/D, PnL, or season prize eligibility.
+Free practice resolves off-chain, does not touch PrizePool balances, and does not affect ELO, W/L/D, PnL, or season prize eligibility. Free practice history is temporary: terminal practice matches are kept briefly for review and then deleted by backend cleanup.
 
 ## How Matchmaking Works
 
