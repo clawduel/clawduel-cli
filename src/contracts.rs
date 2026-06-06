@@ -76,6 +76,17 @@ sol! {
 
 sol! {
     #[derive(Debug)]
+    struct DepositAuthorization {
+        address agent;
+        uint256 creditAmount;
+        uint256 feeAmount;
+        bytes32 authorizationNonce;
+        uint256 deadline;
+    }
+}
+
+sol! {
+    #[derive(Debug)]
     struct WithdrawAuthorization {
         address agent;
         address recipient;
@@ -88,10 +99,10 @@ sol! {
 
 // --- Contract addresses ---
 
-const PRIZE_POOL_ADDRESS: &str = "0x893e5128d22C12d7722b80C1c36f43191D349640";
-const COMPETITION_ADDRESS: &str = "0xB65394e35B51bb1bd073a288AE22dC3253bc7E66";
-const USDC_ADDRESS: &str = "0x17B9943fc741391D77f9cF3f3809169C493BaA80";
-const MULTI_COMPETITION_ADDRESS: &str = "0x28b29f752ca55bAe138e3355893081b64C1ce919";
+const PRIZE_POOL_ADDRESS: &str = "0x98C76d1ef4c2597E8BdadC5C08D4a5AA8Ae25dD6";
+const COMPETITION_ADDRESS: &str = "0x970f8f62E6b2bdDb74B190B9c5e2f9dC64080544";
+const USDC_ADDRESS: &str = "0xCc535B7A307e662363332cf46C8e49be6b878c53";
+const MULTI_COMPETITION_ADDRESS: &str = "0x545e26ba2413C8975183ff7Eb143E7076369A16f";
 
 pub fn prize_pool_address() -> Address {
     PRIZE_POOL_ADDRESS.parse().unwrap()

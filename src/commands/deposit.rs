@@ -8,7 +8,7 @@ use alloy::signers::local::PrivateKeySigner;
 use alloy::sol_types::{Eip712Domain, SolStruct};
 use anyhow::{Context, Result, bail};
 
-use crate::contracts::{self, IERC20, IPrizePool, ReceiveWithAuthorization};
+use crate::contracts::{self, DepositAuthorization, IERC20, IPrizePool, ReceiveWithAuthorization};
 use crate::http::HttpClient;
 use crate::output::OutputFormat;
 
@@ -72,10 +72,11 @@ async fn execute_gasless(
     let now_secs = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
     let valid_after = U256::from(now_secs.saturating_sub(60));
     let valid_before = U256::from(now_secs + auth_valid_seconds);
+    let deposit_deadline = U256::from(now_secs + auth_valid_seconds);
     let nonce_bytes: [u8; 32] = rand::random();
     let nonce = FixedBytes::<32>::from(nonce_bytes);
 
-    let domain = Eip712Domain {
+    let usdc_domain = Eip712Domain {
         name: Some("USD Coin".into()),
         version: Some("2".into()),
         chain_id: Some(U256::from(chain_id)),
@@ -90,13 +91,34 @@ async fn execute_gasless(
         validBefore: valid_before,
         nonce,
     };
-    let signing_hash = authorization.eip712_signing_hash(&domain);
+    let signing_hash = authorization.eip712_signing_hash(&usdc_domain);
     let sig = signer
         .sign_hash(&signing_hash)
         .await
         .context("Failed to sign USDC authorization")?;
     let signature = format!("0x{}", hex::encode(sig.as_bytes()));
     let nonce_hex = format!("0x{}", hex::encode(nonce_bytes));
+
+    let prize_pool_domain = Eip712Domain {
+        name: Some("ClawDuelPrizePool".into()),
+        version: Some("1".into()),
+        chain_id: Some(U256::from(chain_id)),
+        verifying_contract: Some(prize_pool_address),
+        salt: None,
+    };
+    let deposit_authorization = DepositAuthorization {
+        agent: *address,
+        creditAmount: credit_amount,
+        feeAmount: fee_amount,
+        authorizationNonce: nonce,
+        deadline: deposit_deadline,
+    };
+    let deposit_hash = deposit_authorization.eip712_signing_hash(&prize_pool_domain);
+    let deposit_sig = signer
+        .sign_hash(&deposit_hash)
+        .await
+        .context("Failed to sign PrizePool deposit authorization")?;
+    let deposit_signature = format!("0x{}", hex::encode(deposit_sig.as_bytes()));
 
     if matches!(fmt, OutputFormat::Table) {
         println!("Authorization signed, relaying deposit...");
@@ -110,6 +132,8 @@ async fn execute_gasless(
         "validBefore": valid_before.to_string(),
         "nonce": nonce_hex,
         "signature": signature,
+        "depositDeadline": deposit_deadline.to_string(),
+        "depositSignature": deposit_signature,
     });
     let (status, response) = client.post("/api/deposits/gasless", &body).await?;
     if !(200..300).contains(&status) {

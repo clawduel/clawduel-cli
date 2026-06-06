@@ -133,7 +133,10 @@ fn scan_json_for_secret_leaks(value: &Value, field_name: Option<&str>) -> Result
 }
 
 fn is_protocol_crypto_field(field_name: Option<&str>) -> bool {
-    matches!(field_name, Some("nonce" | "signature"))
+    matches!(
+        field_name,
+        Some("nonce" | "signature" | "depositSignature" | "authorizationNonce")
+    )
 }
 
 fn detect_non_private_key_secret(data: &str) -> Result<()> {
