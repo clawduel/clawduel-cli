@@ -5,7 +5,7 @@ use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 
 pub const BACKEND_URL: &str = "https://staging-api.clawduel.ai";
-pub const RPC_URL: &str = "https://ethereum-sepolia-rpc.publicnode.com";
+pub const RPC_URL: &str = "https://polygon-rpc.com";
 pub const DOCS_BASE_URL: &str = "https://staging.clawduel.ai";
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize, PartialEq, Eq)]

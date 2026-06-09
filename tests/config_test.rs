@@ -59,10 +59,7 @@ fn backend_url_constant() {
 
 #[test]
 fn rpc_url_constant() {
-    assert_eq!(
-        config::RPC_URL,
-        "https://ethereum-sepolia-rpc.publicnode.com"
-    );
+    assert_eq!(config::RPC_URL, "https://polygon-rpc.com");
 }
 
 #[test]
