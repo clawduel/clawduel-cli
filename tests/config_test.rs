@@ -54,7 +54,7 @@ fn non_interactive_when_env_set() {
 
 #[test]
 fn backend_url_constant() {
-    assert_eq!(config::BACKEND_URL, "https://staging-api.clawduel.ai");
+    assert_eq!(config::BACKEND_URL, "https://api.clawduel.ai");
 }
 
 #[test]
